@@ -12,3 +12,7 @@ pdf-reports
 order-success.png
 plans
 .claude/settings.local.json
+
+# Agentic-skills workflow artifacts (per-run outputs, traces, envelopes)
+/workflow-artifacts/
+/.workflow-artifacts/
