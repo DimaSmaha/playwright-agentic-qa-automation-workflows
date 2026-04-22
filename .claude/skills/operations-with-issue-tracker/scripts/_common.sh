@@ -51,8 +51,8 @@ tracker_from_env() {
   local tracker="${ISSUE_TRACKER:-}"
   [[ -z "$tracker" ]] && emit_error "ISSUE_TRACKER is required (ado|github|jira|linear)"
   case "$tracker" in
-    ado|github|jira|linear) ;;
-    *) emit_error "ISSUE_TRACKER must be one of: ado|github|jira|linear" "value" "$tracker" ;;
+    ado|github|jira|linear|fake) ;;
+    *) emit_error "ISSUE_TRACKER must be one of: ado|github|jira|linear|fake" "value" "$tracker" ;;
   esac
   printf '%s' "$tracker"
 }
@@ -74,6 +74,9 @@ require_auth() {
       ;;
     linear)
       [[ -z "${LINEAR_TOKEN:-}" ]] && emit_error "LINEAR_TOKEN is required for ISSUE_TRACKER=linear"
+      ;;
+    fake)
+      [[ -z "${FAKE_TRACKER_URL:-}" ]] && emit_error "FAKE_TRACKER_URL is required for ISSUE_TRACKER=fake (e.g. http://localhost:3000 or https://<ngrok>.ngrok.io)"
       ;;
   esac
 }
