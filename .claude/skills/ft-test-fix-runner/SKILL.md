@@ -25,7 +25,7 @@ Use it for requests like:
 Do **not** use it for:
 
 - `app-bug` verdicts (use `ft-bug-reporter`)
-- low-confidence classifications (< 0.70)
+- low-confidence classifications (< 0.55)
 - changing application source code
 
 ## What comes before and after
@@ -36,7 +36,7 @@ Do **not** use it for:
 ## Inputs
 
 **Required:**
-- `classification.json` — must have `verdict: "test-bug"` and `confidence >= 0.70`
+- `classification.json` — must have `verdict: "test-bug"` and `confidence >= 0.55`
 - `repro.json` — for spec path, error, locator, and evidence
 
 If missing, check `.workflow-artifacts/` or ask the user to run `ft-repro` + `ft-classifier` first.
@@ -45,11 +45,11 @@ If missing, check `.workflow-artifacts/` or ask the user to run `ft-repro` + `ft
 
 ### 1. Confirm verdict and confidence
 
-Read `classification.json`. If `verdict != "test-bug"` or `confidence < 0.70`:
+Read `classification.json`. If `verdict != "test-bug"` or `confidence < 0.55`:
 
 ```text
 Verdict is <verdict> with confidence <confidence>.
-The threshold for ft-test-fix-runner is test-bug with confidence >= 0.70.
+The threshold for ft-test-fix-runner is test-bug with confidence >= 0.55.
 <Suggest appropriate action based on actual verdict>
 ```
 
@@ -167,7 +167,7 @@ For `verdict: "needs-human"`:
 
 ## Hard rules
 
-- Only run when `verdict == "test-bug"` and `confidence >= 0.70`.
+- Only run when `verdict == "test-bug"` and `confidence >= 0.55`.
 - Change **test code only** — never touch application source.
 - Always verify the fix passes before shipping.
 - Use `gf-*` skills for all git operations — do not run raw git commands.

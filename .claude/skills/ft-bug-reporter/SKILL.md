@@ -24,7 +24,7 @@ Use it for requests like:
 Do **not** use it for:
 
 - `test-bug` verdicts (use `ft-test-fix-runner`)
-- low-confidence classifications (< 0.75)
+- low-confidence classifications (< 0.60)
 - running or classifying the test
 
 ## What comes before and after
@@ -35,7 +35,7 @@ Do **not** use it for:
 ## Inputs
 
 **Required:**
-- `classification.json` — must have `verdict: "app-bug"` and `confidence >= 0.75`
+- `classification.json` — must have `verdict: "app-bug"` and `confidence >= 0.60`
 - `repro.json` — for error details and evidence artifact paths
 
 If either file is missing, check `.workflow-artifacts/` for the most recent run.
@@ -45,11 +45,11 @@ If still not found, ask the user to run `ft-repro` and `ft-classifier` first.
 
 ### 1. Confirm verdict and confidence
 
-Read `classification.json`. If `verdict != "app-bug"` or `confidence < 0.75`:
+Read `classification.json`. If `verdict != "app-bug"` or `confidence < 0.60`:
 
 ```text
 Verdict is <verdict> with confidence <confidence>.
-The threshold for ft-bug-reporter is app-bug with confidence >= 0.75.
+The threshold for ft-bug-reporter is app-bug with confidence >= 0.60.
 <Explain what to do instead based on the actual verdict>
 ```
 
@@ -138,9 +138,9 @@ Write `.workflow-artifacts/{run_id}/bug.json`:
 ```
 
 **Severity mapping:**
-- `confidence >= 0.90` → `critical`
-- `confidence >= 0.80` → `high`
-- `confidence >= 0.75` → `medium`
+- `confidence >= 0.70` → `critical`
+- `confidence >= 0.70` → `high`
+- `confidence >= 0.60` → `medium`
 
 ### 6. Output
 
@@ -154,7 +154,7 @@ Tag: claude-generated
 
 ## Hard rules
 
-- Only run when `verdict == "app-bug"` and `confidence >= 0.75`.
+- Only run when `verdict == "app-bug"` and `confidence >= 0.60`.
 - Always call tracker ops via `operations-with-issue-tracker` scripts — never call APIs directly.
 - `id:0` from the fake tracker is expected and valid; do not treat it as a failure.
 - JSON-only primary output (`bug.json`).

@@ -83,10 +83,10 @@ Feed these observations into your signal weights.
 
 | Verdict | Minimum confidence to route |
 |---|---|
-| `test-bug` | 0.70 |
-| `app-bug` | 0.75 |
-| `flaky` | 0.60 |
-| `infra` | 0.80 |
+| `test-bug` | 0.55 |
+| `app-bug` | 0.60 |
+| `flaky` | 0.45 |
+| `infra` | 0.65 |
 
 If no verdict meets its threshold, set verdict to `needs-human`.
 

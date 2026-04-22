@@ -65,10 +65,10 @@ Invoke `ft-classifier` with the `repro.json` from Phase 1.
 
 | Verdict | Confidence | Action |
 |---|---|---|
-| `test-bug` | ≥ 0.70 | Phase 3A: Invoke `ft-test-fix-runner` |
-| `app-bug` | ≥ 0.75 | Phase 3B: Invoke `ft-bug-reporter` |
-| `flaky` | ≥ 0.60 | Report as flaky; suggest retry annotation; no code change |
-| `infra` | ≥ 0.80 | Report infrastructure issue; no code change |
+| `test-bug` | ≥ 0.55 | Phase 3A: Invoke `ft-test-fix-runner` |
+| `app-bug` | ≥ 0.60 | Phase 3B: Invoke `ft-bug-reporter` |
+| `flaky` | ≥ 0.45 | Report as flaky; suggest retry annotation; no code change |
+| `infra` | ≥ 0.65 | Report infrastructure issue; no code change |
 | `needs-human` | any | Present signals and stop; human decision required |
 
 **Phase 3A — Test fix (`ft-test-fix-runner`):**
