@@ -5,72 +5,147 @@ description: >
   B. Use when a failing test must be re-run in a controlled way to produce
   repro.json plus evidence artifacts (trace, video, screenshot) for downstream
   classification. Trigger on requests like "reproduce this failing test",
-  "collect Playwright failure artifacts", or "generate repro.json from a red
-  test".
+  "collect Playwright failure artifacts", or "generate repro.json from a red test".
 ---
 
 # ft-repro
 
-This skill reproduces one failing Playwright test and emits a normalized
-`repro.json` contract for the classifier stage.
+Re-run one failing Playwright spec, collect all failure artifacts, and emit a
+normalized `repro.json` for the classifier stage.
 
-## Goal
+## When this skill fits
 
-- Re-run a target spec deterministically
-- Collect failure artifacts
-- Extract structured failure signals
-- Output machine-readable JSON only
+Use it for requests like:
 
-## Run command
+- "reproduce this failing test"
+- "collect failure artifacts from this spec"
+- "get repro.json for Pipeline B"
+- "run this test and capture what went wrong"
 
-```bash
-pnpm exec playwright test <spec> \
-  --project=<browser> \
-  --reporter=json
+Do **not** use it for:
+
+- classifying why a test failed (use `ft-classifier`)
+- fixing a test (use `ft-test-fix-runner`)
+- running the full test suite
+
+## What comes before and after
+
+- **Before:** a failing test spec path (from CI output, from the user, or from `.last-run.json`)
+- **After:** `ft-classifier` reads `repro.json`
+
+## Inputs
+
+**Required:** spec path relative to the project root (e.g. `tests/critical-checkout-validation-fail.spec.ts`)
+
+If the spec path is not provided, check `.workflow-artifacts/` for a recent run or ask:
+
+```text
+Which spec file failed? Please provide the relative path (e.g. tests/my-test.spec.ts)
 ```
 
-## Required capture
+## Workflow
 
-- stdout/stderr
-- `trace.zip`
-- failure video
-- failure screenshot
+### 1. Validate the spec exists
 
-## Required extraction fields
+Check that the file exists:
 
-- `error`
-- `stack`
-- `locator`
-- `expected`
-- `actual`
-- `artifacts.trace`
-- `artifacts.video`
-- `artifacts.screenshot`
+```bash
+test -f <spec-path>
+```
 
-## Output contract (`repro.json`)
+If missing, stop and tell the user.
+
+### 2. Generate a run_id
+
+```bash
+run_id="ft-$(date +%Y%m%d-%H%M%S)"
+mkdir -p ".workflow-artifacts/${run_id}"
+```
+
+### 3. Run the failing test
+
+```bash
+npx playwright test <spec-path> \
+  --project=chromium \
+  --reporter=json \
+  2>&1 | tee ".workflow-artifacts/${run_id}/pw-output.json"
+```
+
+Use `npm` / `npx`, **not** `pnpm`. Run with `--project=chromium` for reproducibility.
+
+The test is expected to fail — a non-zero exit code is normal here.
+
+### 4. Extract failure signals from the JSON reporter output
+
+Parse `.workflow-artifacts/{run_id}/pw-output.json`. Navigate:
+
+```
+suites[] → specs[] → tests[] → results[] → errors[]
+```
+
+Extract from the first error in the first failed result:
+
+| Field | Where to find it |
+|---|---|
+| `error` | `errors[0].message` (first line only) |
+| `stack` | `errors[0].stack` |
+| `locator` | Regex-extract from error message: `locator\('(.+?)'\)` or `getBy\w+\(.*?\)` |
+| `expected` | Regex-extract: `Expected: (.+)` |
+| `actual` | Regex-extract: `Received: (.+)` |
+
+If the test crashed before producing JSON (e.g. `Cannot find module`), capture
+raw stderr instead and set `error` to the first non-empty line.
+
+### 5. Locate evidence artifacts
+
+After the test run, Playwright writes artifacts to `test-results/`. Look for:
+
+```bash
+find test-results/ -name "trace.zip" | head -1
+find test-results/ -name "*.png"     | head -1
+find test-results/ -name "*.webm"    | head -1
+```
+
+Copy found artifacts into `.workflow-artifacts/{run_id}/`:
+
+```bash
+cp <trace>      ".workflow-artifacts/${run_id}/trace.zip"
+cp <screenshot> ".workflow-artifacts/${run_id}/fail.png"
+cp <video>      ".workflow-artifacts/${run_id}/video.webm"
+```
+
+Set the corresponding field to `null` if an artifact is not found.
+
+### 6. Write repro.json
+
+Write `.workflow-artifacts/{run_id}/repro.json`:
 
 ```json
 {
-  "error": "...",
+  "run_id": "ft-20240601-143012",
+  "spec": "tests/critical-checkout-validation-fail.spec.ts",
+  "error": "TimeoutError: Timed out 30000ms waiting for expect(locator).toBeVisible()",
   "stack": "...",
-  "locator": "...",
-  "expected": "...",
-  "actual": "...",
+  "locator": "page.getByRole('button', { name: 'Finish' })",
+  "expected": "visible",
+  "actual": "hidden",
   "artifacts": {
-    "trace": "trace.zip",
-    "video": "video.mp4",
-    "screenshot": "fail.png"
+    "trace": ".workflow-artifacts/ft-20240601-143012/trace.zip",
+    "screenshot": ".workflow-artifacts/ft-20240601-143012/fail.png",
+    "video": ".workflow-artifacts/ft-20240601-143012/video.webm"
   }
 }
 ```
 
-## Rules
+### 7. Output
 
-1. Reproduce only one failure target per run.
-2. Do not return free-form logs as the primary output.
-3. Write deterministic paths for artifacts.
-4. Keep output idempotent across retries.
+Print the path to `repro.json` and a one-line summary of the error.
+Tell the user: "Pass this to `ft-classifier` for triage."
 
-## Downstream
+## Hard rules
 
-Pass `repro.json` to `ft-classifier`.
+- Reproduce **one spec per run** only.
+- Use `npx` not `pnpm exec`.
+- Write deterministic artifact paths inside `.workflow-artifacts/{run_id}/`.
+- Do not emit free-form logs as primary output — JSON contract only.
+- A non-zero exit from Playwright is expected when the test is failing; do not treat it as a script error.

@@ -29,6 +29,20 @@ Never mix phases. Never modify files during PLAN MODE. Never skip the plan.
 
 ---
 
+## Self-awareness
+
+**If called after `gt-spec-writer`:** audit only the newly written spec file.
+Do not scan the full `tests/` directory unless the user asks.
+
+**If called independently:** ask which files to audit, or default to all of `tests/`
+if no answer is given.
+
+**Source of truth for page objects:** always check `tests/pages/` first. If a
+locator can be expressed through an existing page object method, flag inline
+locators as a CAN FIX issue even if they technically work.
+
+---
+
 ## Phase 1: PLAN MODE
 
 ### Step 1 — Discover the project
@@ -36,11 +50,12 @@ Never mix phases. Never modify files during PLAN MODE. Never skip the plan.
 Read these locations (if they exist) before touching any test file:
 
 ```
-playwright/
-├── app/             ← page objects, fixtures, helpers
-├── tests/           ← spec files
-├── playwright.config.ts
-└── tsconfig.json (or jsconfig.json)
+tests/
+├── pages/           ← page objects (source of truth for locators)
+├── fixtures/        ← shared fixtures
+├── *.spec.ts        ← spec files
+playwright.config.ts
+package.json
 ```
 
 Also read:
