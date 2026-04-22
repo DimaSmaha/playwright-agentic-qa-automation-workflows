@@ -46,7 +46,7 @@ If any of these are missing, ask for them before starting.
 When the user supplies a final commit message and wants one command:
 
 ```bash
-bash .claude/skills/git-flow/orchestrator/ship.sh \
+bash .claude/skills/gf-ship/scripts/ship.sh \
   --work-item-id <id> \
   --title "<work-item-title>" \
   --commit-type <type> \

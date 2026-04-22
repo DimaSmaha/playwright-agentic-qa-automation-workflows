@@ -70,7 +70,7 @@ Never invent a misleading title. If the branch name is unclear, read the actual 
 Run:
 
 ```bash
-bash .claude/skills/git-flow/scripts/create-pr.sh \
+bash .claude/skills/gf-pr/scripts/create-pr.sh \
   --work-item-id <id> \
   --base main
 ```

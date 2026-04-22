@@ -102,7 +102,7 @@ Then ask: `Is this commit message OK?`
 Run:
 
 ```bash
-bash .claude/skills/git-flow/scripts/create-commit.sh \
+bash .claude/skills/gf-commit/scripts/create-commit.sh \
   --type <type> \
   --subject "<subject>" \
   --scope "<scope>" \

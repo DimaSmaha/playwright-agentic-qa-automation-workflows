@@ -43,7 +43,7 @@ You cannot push the main branch with this skill. Switch to a feature branch firs
 Run:
 
 ```bash
-bash .claude/skills/git-flow/scripts/push-branch.sh
+bash .claude/skills/gf-push/scripts/push-branch.sh
 ```
 
 The script will:

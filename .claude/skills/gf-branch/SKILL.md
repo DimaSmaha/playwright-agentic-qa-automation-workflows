@@ -50,7 +50,7 @@ tell the user to run this from inside a git repository.
 Run the helper script:
 
 ```bash
-bash .claude/skills/git-flow/scripts/create-branch.sh \
+bash .claude/skills/gf-branch/scripts/create-branch.sh \
   --work-item-id <id> \
   --title "<title>" \
   --base main
