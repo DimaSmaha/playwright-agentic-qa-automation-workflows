@@ -61,7 +61,9 @@ require_auth() {
   local tracker="${1:-$(tracker_from_env)}"
   case "$tracker" in
     ado)
-      [[ -z "${ADO_TOKEN:-}" ]] && emit_error "ADO_TOKEN is required for ISSUE_TRACKER=ado"
+      if [[ -z "${ADO_TOKEN:-}" ]]; then
+        emit_error "ADO_TOKEN is required for ISSUE_TRACKER=ado"
+      fi
       ;;
     github)
       if [[ -z "${GITHUB_TOKEN:-}" && -z "${GH_TOKEN:-}" ]]; then
@@ -69,14 +71,22 @@ require_auth() {
       fi
       ;;
     jira)
-      [[ -z "${JIRA_BASE_URL:-}" ]] && emit_error "JIRA_BASE_URL is required for ISSUE_TRACKER=jira"
-      [[ -z "${JIRA_TOKEN:-}" ]] && emit_error "JIRA_TOKEN is required for ISSUE_TRACKER=jira"
+      if [[ -z "${JIRA_BASE_URL:-}" ]]; then
+        emit_error "JIRA_BASE_URL is required for ISSUE_TRACKER=jira"
+      fi
+      if [[ -z "${JIRA_TOKEN:-}" ]]; then
+        emit_error "JIRA_TOKEN is required for ISSUE_TRACKER=jira"
+      fi
       ;;
     linear)
-      [[ -z "${LINEAR_TOKEN:-}" ]] && emit_error "LINEAR_TOKEN is required for ISSUE_TRACKER=linear"
+      if [[ -z "${LINEAR_TOKEN:-}" ]]; then
+        emit_error "LINEAR_TOKEN is required for ISSUE_TRACKER=linear"
+      fi
       ;;
     fake)
-      [[ -z "${FAKE_TRACKER_URL:-}" ]] && emit_error "FAKE_TRACKER_URL is required for ISSUE_TRACKER=fake (e.g. http://localhost:3000 or https://<ngrok>.ngrok.io)"
+      if [[ -z "${FAKE_TRACKER_URL:-}" ]]; then
+        emit_error "FAKE_TRACKER_URL is required for ISSUE_TRACKER=fake (e.g. http://localhost:3000 or https://<ngrok>.ngrok.io)"
+      fi
       ;;
   esac
 }

@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/_common.sh"
 
-PARENT_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+PARENT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${PARENT_DIR}/_common.sh"
 
 ID=""
