@@ -3,6 +3,10 @@ import { expect, Page } from "@playwright/test";
 export class InventoryPage {
   constructor(private readonly page: Page) {}
 
+  getShoppingCartBadgeLocator() {
+    return this.page.locator('[data-test="shopping-cart-badge"]');
+  }
+
   async assertLoaded() {
     await expect(
       this.page.locator('[data-test="inventory-container"]'),
@@ -14,6 +18,10 @@ export class InventoryPage {
       .getByRole("button", { name: "Add to cart" })
       .first()
       .click();
+  }
+
+  async removeFirstItemFromCart() {
+    await this.page.getByRole("button", { name: "Remove" }).first().click();
   }
 
   async assertCartCount(expectedCount: string) {
