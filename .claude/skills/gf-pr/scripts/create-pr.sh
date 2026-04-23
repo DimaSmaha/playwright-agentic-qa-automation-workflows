@@ -52,7 +52,9 @@ if [[ -z "$TITLE" ]]; then
     TITLE="[${WORK_ITEM_ID}] ${WORK_ITEM_TITLE}"
   else
     # Fall back to first commit subject on branch vs base
-    TITLE=$(git log --oneline "origin/${BASE}..HEAD" | tail -1 | cut -d' ' -f2-)
+    if git rev-parse --verify "origin/${BASE}" &>/dev/null; then
+      TITLE=$(git log --oneline "origin/${BASE}..HEAD" | tail -1 | cut -d' ' -f2-)
+    fi
     [[ -z "$TITLE" ]] && TITLE=$(git rev-parse --abbrev-ref HEAD)
   fi
 fi
@@ -85,7 +87,7 @@ if [[ -z "$BODY" ]]; then
 
 ## Changes
 
-$(git log --oneline "origin/${BASE}..HEAD" 2>/dev/null | sed 's/^/- /' || echo '- see commits')
+$(git rev-parse --verify "origin/${BASE}" &>/dev/null && git log --oneline "origin/${BASE}..HEAD" 2>/dev/null | sed 's/^/- /' || echo '- see commits')
 
 ## Testing
 
