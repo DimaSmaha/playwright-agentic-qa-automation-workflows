@@ -45,10 +45,11 @@ If missing, check `.workflow-artifacts/` or ask the user to run `gt-test-case-ge
 Load all fields — especially `ideas`, `verifications`, `navigations`, `conditions`,
 and `reusable_helpers`.
 
-### 2. Catalog existing page object methods
+### 2. Catalog existing page object methods and spec patterns
 
-Read the project's page objects before writing a single line of spec:
+Read the project's page objects **and** at least two existing spec files before writing a single line of spec.
 
+**Page objects to read:**
 ```
 tests/pages/login.page.ts
 tests/pages/inventory.page.ts
@@ -57,7 +58,14 @@ tests/pages/checkout.page.ts
 tests/fixtures/pages.fixture.ts
 ```
 
-Map every public method. Prefer these over raw Playwright locator calls.
+**Representative spec files to read (for style reference):**
+```
+tests/critical-inventory.spec.ts   — minimal describe + beforeEach pattern
+tests/critical-cart.spec.ts        — multi-test, chained page object calls
+tests/example.spec.ts              — single test without describe block
+```
+
+Map every public page object method. Absorb the import style, fixture usage, and assertion patterns from the existing specs before writing.
 
 ### 3. Determine spec file location
 
@@ -67,7 +75,9 @@ Derive the domain from `tc.json.navigations[0]` or the test title:
 - Inventory → `tests/inventory/`
 - Cart → `tests/cart/`
 - Checkout → `tests/checkout/`
-- Default → `tests/`
+- Product detail → `tests/product-detail/`
+- Any other domain → `tests/<domain>/` (create the directory if it doesn't exist)
+- Default (domain unclear) → `tests/`
 
 File name: `<kebab-case-title>.spec.ts`
 
@@ -92,27 +102,37 @@ Note new locators to add to the spec or propose adding them to the page object.
 Use the project's fixture pattern (matching existing tests):
 
 ```typescript
-import { test, expect } from '@playwright/test';
-import { test as pwTest } from '../fixtures/pages.fixture';
+import { test } from "../fixtures/pages.fixture";
+// Only add expect if raw assertions are needed and no page object assertion method exists:
+// import { test, expect } from "../fixtures/pages.fixture";
 
-pwTest.describe('<scenario title>', () => {
+test.describe("<scenario title>", () => {
 
-  pwTest.beforeEach(async ({ pages }) => {
+  test.beforeEach(async ({ pages }) => {
     // Set up conditions from tc.json.conditions
+    await pages.login.goto();
+    await pages.login.login("standard_user", "secret_sauce");
   });
 
-  pwTest('<test title>', async ({ pages }) => {
+  test("<test title>", async ({ pages }) => {
     // Map each idea → action using page object methods
-    // Map each verification → expect() assertion (1:1 with ideas)
+    // Map each verification → pages.xxx.assertXxx() or expect() (1:1 with ideas)
   });
 
 });
 ```
 
-**Rules for the spec:**
-- Use `pwTest` from the fixture, not raw `test` from Playwright (unless fixture isn't applicable)
-- Map `ideas[i]` → action step; `verifications[i]` → `expect()` assertion immediately after
-- Use page object methods from `tc.json.reusable_helpers` wherever possible
+**Import rules:**
+- Always import `test` from `"../fixtures/pages.fixture"` (path relative to spec location) — never from `@playwright/test`
+- Import `expect` from the same fixture file if raw assertions are needed — never from `@playwright/test`
+- Single import line, no `pwTest` alias — use `test` directly
+
+**Conventions matching existing tests:**
+- Prefer page object assertion methods (`pages.inventory.assertCartCount("1")`) over raw `expect()` calls in spec bodies
+- Keep the spec body clean — page object methods for all interactions and assertions
+- If an interaction or assertion needed by the test case does **not** exist in the page object, **add a method to the page object** (e.g. add `clickFirstProductName()` to `InventoryPage`) rather than writing inline locator code in the spec
+- Use `data-test` attributes as locators inside page object methods when available; prefer `getByRole()`, `getByLabel()`, `getByText()` otherwise
+- Map `ideas[i]` → action step; `verifications[i]` → assertion immediately after (1:1)
 - Do not add `test.only` without a `// TODO:` comment
 - Do not add `page.waitForTimeout()` — use `await expect(locator).toBeVisible()` instead
 
@@ -161,8 +181,11 @@ Do **not** attempt to fix a failing spec here — that is Pipeline B's job.
 
 ## Hard rules
 
-- Always scan page objects before writing the spec — reuse what exists.
-- Use `playwright-cli` for any locator not covered by existing page objects.
+- Always scan page objects **and** existing spec files before writing — match their style exactly.
+- Never import `test` or `expect` from `@playwright/test` in spec files — always import from `../fixtures/pages.fixture`.
+- Prefer page object methods (`pages.xxx.assertXxx()`) over inline `expect()` calls in spec bodies.
+- When a needed action or assertion is missing from a page object, **add a method to the page object** — keep inline locator code out of spec files.
+- Use `playwright-cli` to find stable locators for any UI element not yet covered by a page object method.
 - Use `npx`, not `pnpm exec`.
 - Map ideas to actions and verifications to assertions 1:1.
 - Do not create tracker items, commit, or open PRs in this stage.

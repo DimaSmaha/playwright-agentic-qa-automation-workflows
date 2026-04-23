@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TRACKER_SCRIPTS="$(cd "${SCRIPT_DIR}/../../../../operations-with-issue-tracker/scripts" && pwd)"
+TRACKER_SCRIPTS="$(cd "${SCRIPT_DIR}/../../operations-with-issue-tracker/scripts" && pwd)"
 
 # Load env (handles .env sourcing via _common.sh)
 source "${TRACKER_SCRIPTS}/_common.sh"
