@@ -46,7 +46,20 @@ escaped_parent="$(json_escape "$PARENT_ID")"
 escaped_type="$(json_escape "$TYPE")"
 escaped_dedupe="$(json_escape "$DEDUPE_BY")"
 
-payload="{\"title\":\"${escaped_title}\",\"description\":\"${escaped_desc}\",\"type\":\"${escaped_type}\""
+if [[ "$PATH_SEGMENT" == "testcases" ]]; then
+  # /testcases/create requires `steps` array, not `description`
+  if [[ -n "$DESCRIPTION" ]]; then
+    steps_json="$(printf '%s' "$DESCRIPTION" | python3 -c "
+import sys, json
+lines = [l for l in sys.stdin.read().splitlines() if l.strip()]
+print(json.dumps(lines if lines else ['${escaped_title}']))")"
+  else
+    steps_json="[\"${escaped_title}\"]"
+  fi
+  payload="{\"title\":\"${escaped_title}\",\"type\":\"${escaped_type}\",\"steps\":${steps_json}"
+else
+  payload="{\"title\":\"${escaped_title}\",\"description\":\"${escaped_desc}\",\"type\":\"${escaped_type}\""
+fi
 [[ -n "$TAG" ]]       && payload+=",\"tag\":\"${escaped_tag}\""
 [[ -n "$PARENT_ID" ]] && payload+=",\"parent_id\":\"${escaped_parent}\""
 [[ -n "$DEDUPE_BY" ]] && payload+=",\"dedupe_by\":\"${escaped_dedupe}\""

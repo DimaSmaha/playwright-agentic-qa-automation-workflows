@@ -9,6 +9,7 @@ Each adapter must emit the same JSON shape for each verb.
 ## Current support
 
 - `github`: implemented for all verbs (`gh` CLI)
+- `fake`: get and create implemented; update, update-steps, link, comment, query, transition return `{"ok":true,"skipped":true}` (no-op)
 - `ado`: preflight implemented, verb stubs return JSON errors
 - `jira`: preflight implemented, verb stubs return JSON errors
 - `linear`: preflight implemented, verb stubs return JSON errors
