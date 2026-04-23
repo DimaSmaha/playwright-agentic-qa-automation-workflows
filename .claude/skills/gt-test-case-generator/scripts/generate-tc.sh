@@ -86,19 +86,24 @@ XML_FILE="${RUN_DIR}/tc-steps-${INDEX}.xml"
 # Run preflight (idempotent — re-running is safe)
 bash "${TRACKER_SCRIPTS}/preflight.sh" > /dev/null
 
-bash "${TRACKER_SCRIPTS}/create.sh" \
+create_response="$(bash "${TRACKER_SCRIPTS}/create.sh" \
   --type "Test Case" \
   --title "$title" \
   --description-file "$MD_FILE" \
   --parent "$US_ID" \
   --tag "automated,claude-generated" \
-  --dedupe-by title > /dev/null
+  --dedupe-by title)"
+
+tracker_id="$(jq '.id' <<< "$create_response")"
+deduped="$(jq '.deduped' <<< "$create_response")"
 
 # --- Write tc.json ---
 local_id="tc-$(date +%s)"
 
 jq -n \
   --arg id "$local_id" \
+  --argjson tracker_id "$tracker_id" \
+  --argjson deduped "$deduped" \
   --arg title "$title" \
   --arg us_id "$US_ID" \
   --arg xml_path "$XML_FILE" \
@@ -107,6 +112,7 @@ jq -n \
   --argjson scenario "$scenario_json" \
   '{
     id: $id,
+    tracker_id: $tracker_id,
     title: $title,
     parent_us_id: $us_id,
     steps_xml_path: $xml_path,
@@ -119,7 +125,7 @@ jq -n \
     navigations: ($scenario.navigations // []),
     ac_trace: ($scenario.ac_trace // []),
     reusable_helpers: ($scenario.reusable_helpers // []),
-    deduped: false
+    deduped: $deduped
   }' > "$TC_JSON"
 
 cat "$TC_JSON"

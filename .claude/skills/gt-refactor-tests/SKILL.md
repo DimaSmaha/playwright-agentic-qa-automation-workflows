@@ -31,7 +31,13 @@ Never mix phases. Never modify files during PLAN MODE. Never skip the plan.
 
 ## Self-awareness
 
-**If called after `gt-spec-writer`:** audit only the newly written spec file.
+**If called from `gt-us-to-spec` orchestrator or `ft-orchestrator` (pipeline mode):** skip PLAN MODE entirely. Determine autonomously what to fix:
+- Apply **all MUST FIX** items without asking.
+- Apply **CAN FIX** items that are clear-cut (naming, fixture consolidation, locator hygiene with existing page object coverage) — skip CAN FIX items that require app-side changes or are subjective.
+- Never apply SKIP items.
+- Emit a short summary of what was fixed and what was skipped, then continue the pipeline. Do not wait for approval at any step.
+
+**If called after `gt-spec-writer` (standalone):** audit only the newly written spec file.
 Do not scan the full `tests/` directory unless the user asks.
 
 **If called independently:** ask which files to audit, or default to all of `tests/`

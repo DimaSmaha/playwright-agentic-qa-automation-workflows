@@ -63,11 +63,12 @@ fi
 [[ -n "$DEDUPE_BY" ]] && payload+=",\"dedupe_by\":\"${escaped_dedupe}\""
 payload+="}"
 
-curl_with_retry POST "$URL" \
+response="$(curl_with_retry POST "$URL" \
   -H "Content-Type: application/json" \
-  -d "$payload" > /dev/null
+  -d "$payload")"
 
-# Fake tracker returns {"status":"ok"} without an ID.
-# Normalize to the standard create.sh contract.
+# Fake tracker returns {"status":"ok","data":{"id":"TEST-xxxxx",...}}
+# Extract the id from data.id; fall back to 0 if missing.
+tracker_id="$(printf '%s' "$response" | jq -r '.data.id // 0')"
 escaped_url="$(json_escape "$URL")"
-printf '{"id":0,"url":"%s","deduped":false}\n' "$escaped_url"
+printf '{"id":"%s","url":"%s","deduped":false}\n' "$tracker_id" "$escaped_url"

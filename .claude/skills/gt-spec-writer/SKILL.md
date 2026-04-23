@@ -83,19 +83,21 @@ File name: `<kebab-case-title>.spec.ts`
 
 Check if the file already exists — if so, update it rather than overwriting.
 
-### 4. Find missing locators with playwright-cli
+### 4. Find missing locators with playwright-cli (conditional)
 
-For any UI element referenced in `tc.json.ideas` or `verifications` that is
-**not already covered by an existing page object method**:
+After Step 2, compare every UI element referenced in `tc.json.ideas` and `verifications`
+against the cataloged page object methods.
 
-1. Use `playwright-cli` to open the relevant page
-2. Take a snapshot to inspect the DOM
-3. Find a stable accessible locator:
-   - Prefer `getByRole()`, `getByLabel()`, `getByTestId()`, `getByText()`
-   - Avoid generated class names or positional selectors
-4. Verify it resolves to exactly one element
+- **If all elements are covered** → skip this step entirely. Do not launch playwright-cli.
+- **If any element is missing** → run playwright-cli **only for those specific missing elements**:
+  1. Use `playwright-cli` to open the relevant page
+  2. Take a snapshot to inspect the DOM
+  3. Find a stable accessible locator:
+     - Prefer `getByRole()`, `getByLabel()`, `getByTestId()`, `getByText()`
+     - Avoid generated class names or positional selectors
+  4. Verify it resolves to exactly one element
 
-Note new locators to add to the spec or propose adding them to the page object.
+Note new locators to add to the page object (not inline in the spec).
 
 ### 5. Write the spec file
 
@@ -114,7 +116,7 @@ test.describe("<scenario title>", () => {
     await pages.login.login("standard_user", "secret_sauce");
   });
 
-  test("<test title>", async ({ pages }) => {
+  test("<test title>", { tag: ["@<tc_id>"] }, async ({ pages }) => {
     // Map each idea → action using page object methods
     // Map each verification → pages.xxx.assertXxx() or expect() (1:1 with ideas)
   });
@@ -135,6 +137,9 @@ test.describe("<scenario title>", () => {
 - Map `ideas[i]` → action step; `verifications[i]` → assertion immediately after (1:1)
 - Do not add `test.only` without a `// TODO:` comment
 - Do not add `page.waitForTimeout()` — use `await expect(locator).toBeVisible()` instead
+- Always include `{ tag: ["@tc-<tracker_id>"] }` on every generated test, using `tc.json.tracker_id` as the value (e.g. `{ tag: ["@tc-42"] }`). Fall back to `tc.json.id` only if `tracker_id` is absent or `0`.
+
+**After each test is written:** re-read the affected page object file(s) to refresh your view of their public methods before writing the next test. This prevents duplicate additions and ensures any method added during the session is visible.
 
 ### 6. Execute the spec
 
@@ -185,7 +190,7 @@ Do **not** attempt to fix a failing spec here — that is Pipeline B's job.
 - Never import `test` or `expect` from `@playwright/test` in spec files — always import from `../fixtures/pages.fixture`.
 - Prefer page object methods (`pages.xxx.assertXxx()`) over inline `expect()` calls in spec bodies.
 - When a needed action or assertion is missing from a page object, **add a method to the page object** — keep inline locator code out of spec files.
-- Use `playwright-cli` to find stable locators for any UI element not yet covered by a page object method.
+- Only use `playwright-cli` when page object coverage is incomplete; skip it entirely if all needed locators already exist.
 - Use `npx`, not `pnpm exec`.
 - Map ideas to actions and verifications to assertions 1:1.
 - Do not create tracker items, commit, or open PRs in this stage.
