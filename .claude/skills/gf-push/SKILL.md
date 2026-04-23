@@ -72,3 +72,4 @@ Show the JSON output:
 - Never add `--force` or `--force-with-lease`.
 - Always use the same branch name locally and remotely.
 - Return the exact git result — do not summarize vaguely.
+- Never read the bash scripts in `scripts/` before executing them. Call them directly.

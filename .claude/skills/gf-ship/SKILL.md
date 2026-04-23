@@ -32,12 +32,12 @@ Do **not** use it for:
 
 ## What you need before starting
 
-- `GITHUB_TOKEN` set in environment (required for the PR phase)
+- `GITHUB_TOKEN` set in environment or `.env` (required for the PR phase — the script sources `.env` automatically)
 - `REPO_OWNER` and `REPO_NAME` set (or inferrable from `git remote -v`)
 - A work-item-id for the branch name and PR title
 - A clear commit subject describing the change
 
-If any of these are missing, ask for them before starting.
+Infer what is available from context and proceed. Only stop if a work-item-id truly cannot be derived.
 
 ## Workflow
 
@@ -57,31 +57,6 @@ bash .claude/skills/gf-ship/scripts/ship.sh \
 ```
 
 Interpret the phase banners and final `PR_URL:` from the script output.
-
-### Option B — Agent-driven (interactive commit approval)
-
-Run each underlying skill in order. Stop on first failure.
-
-**Phase 1 — Branch** (`gf-branch`)
-- Invoke `gf-branch` with the work-item-id
-- **SUCCESS:** branch created and checked out
-- **SKIP:** document if user says they are already on the correct branch
-- **FAILED:** stop here, report error
-
-**Phase 2 — Commit** (`gf-commit`)
-- Invoke `gf-commit` — preserves staging prompt and message confirmation
-- **SUCCESS:** commit created, clean working tree
-- **FAILED:** stop here, report error
-
-**Phase 3 — Push** (`gf-push`)
-- Invoke `gf-push`
-- **SUCCESS:** exit code 0, branch published to origin
-- **FAILED:** stop here, report error
-
-**Phase 4 — PR** (`gf-pr`)
-- Invoke `gf-pr` with work-item-id
-- **SUCCESS:** PR URL returned
-- **FAILED:** stop here, report error
 
 ### Phase summary
 
@@ -104,6 +79,7 @@ Use **FAILED** and stop populating later phases if a step errors.
 
 - All hard rules from individual `gf-*` skills apply here.
 - Never push to or create a PR from `main`.
-- Require `GITHUB_TOKEN` before Phase 4 starts.
+- Require `GITHUB_TOKEN` before Phase 4 starts (sourced from `.env` automatically by the PR script).
 - Return the PR URL exactly as printed by `gh`; do not guess.
 - If the user only needs one phase, direct them to the individual skill instead.
+- Never read the bash scripts in `scripts/` before executing them. Call them directly.

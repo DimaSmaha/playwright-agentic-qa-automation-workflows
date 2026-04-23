@@ -85,3 +85,4 @@ Do not paraphrase or guess — return the exact script output.
 - Use `--ff-only` semantics when updating the base branch.
 - If the branch already exists, stop and show the script error — do not proceed.
 - Return the exact git result, not a summary.
+- Never read the bash scripts in `scripts/` before executing them. Call them directly.

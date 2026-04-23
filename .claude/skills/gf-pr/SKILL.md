@@ -42,11 +42,17 @@ You cannot create a pull request from the main branch. Switch to a feature branc
 
 ### 2. Verify GITHUB_TOKEN
 
-Check that `GITHUB_TOKEN` (or `GH_TOKEN`) is set in the environment. If missing, stop and return:
+Check that `GITHUB_TOKEN` (or `GH_TOKEN`) is set in the environment. If not found, source `.env` from the repo root and re-check:
+
+```bash
+[ -z "${GITHUB_TOKEN:-}" ] && [ -f .env ] && source .env
+```
+
+If still missing after sourcing, stop and return:
 
 ```text
 GITHUB_TOKEN is required to create a pull request.
-Set it in your environment: export GITHUB_TOKEN=<your-pat>
+Set it in your .env file or environment: GITHUB_TOKEN=<your-pat>
 ```
 
 Also verify `REPO_OWNER` and `REPO_NAME` are set (or derivable from `git remote -v`).
@@ -97,3 +103,4 @@ Return the JSON output:
 - If an open PR already exists on this branch, return it (`deduped: true`); do not create a duplicate.
 - Return the exact PR URL from `gh` output — do not guess URLs.
 - Do not force-push as part of PR creation.
+- Never read the bash scripts in `scripts/` or `adapters/` before executing them. Call them directly.

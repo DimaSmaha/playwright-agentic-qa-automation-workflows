@@ -3,8 +3,8 @@ name: gf-commit
 description: >-
   Create a conventional commit on the current Git branch from staged changes.
   Use when the user asks to commit current work, save changes, or generate a
-  commit message. Asks whether to stage all unstaged files. Shows the proposed
-  message and waits for confirmation before committing.
+  commit message. Stages all modified files automatically, drafts a conventional
+  commit message, and commits without asking for confirmation.
 argument-hint: "optional commit context or scope"
 ---
 
@@ -29,17 +29,16 @@ Do **not** use it for:
 
 ## Workflow
 
-### 1. Ask about staging
+### 1. Stage all modified files
 
-Ask the user:
+Run:
 
-```text
-Do you want to stage all unstaged files before committing?
+```bash
+git add -u
 ```
 
-Options:
-- **Yes** — stage all unstaged files (`--files .`)
-- **No** — use the current staged set as-is
+This stages every tracked modified/deleted file. Untracked new files are not staged
+automatically. Secrets are blocked by the commit script.
 
 ### 2. Preview staged changes
 
@@ -83,21 +82,7 @@ Produce **one** proposed message from the diff. Use [Conventional Commits](https
 - Under 72 characters
 - Describes **what changed**, not vague intent (avoid "update", "misc fixes")
 
-### 4. Show and confirm the message
-
-Display the proposed message:
-
-**Proposed commit message**
-```
-<proposed-message>
-```
-
-Then ask: `Is this commit message OK?`
-
-- **OK** → proceed to step 5 with this message
-- **Not OK** → ask the user to send their exact message in their next reply; do not commit until received
-
-### 5. Create the commit
+### 4. Create the commit
 
 Run:
 
@@ -125,7 +110,7 @@ Return the exact JSON output:
 
 - Never commit on `main` or `master`.
 - Never commit files that likely contain secrets (`.env`, `*.pem`, `*.key`, `playwright/.auth/*.json`); warn the user and stop.
-- Do not create the commit until the user confirms **OK** (or supplies their own message after **Not OK**).
 - Do not amend existing commits; always create a new commit.
 - Never skip hooks (`--no-verify`).
 - If a hook fails, fix the issue and create a new commit — do not amend.
+- Never read the bash scripts in `scripts/` before executing them. Call them directly.
