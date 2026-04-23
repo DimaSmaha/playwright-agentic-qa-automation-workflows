@@ -10,8 +10,12 @@ description: >
 
 # ft-test-fix-runner
 
-Apply a targeted test-only fix for a classified `test-bug`, verify it passes,
-then ship it via a branch-to-PR git workflow.
+Apply a targeted test-only fix for a classified `test-bug` and verify it passes.
+Write `fix.json` with the result.
+
+**Git shipping (branch → commit → push → PR) is handled by `ft-orchestrator` only.**
+When invoked standalone, this skill stops after the fix is verified — it does NOT
+create branches or open PRs.
 
 ## When this skill fits
 
@@ -31,7 +35,8 @@ Do **not** use it for:
 ## What comes before and after
 
 - **Before:** `ft-classifier` produces `classification.json` with `verdict: "test-bug"`
-- **After:** a PR is opened on GitHub via `gf-branch → gf-commit → gf-push → gf-pr`
+- **After (standalone):** `fix.json` is written; no git operations are performed
+- **After (via orchestrator):** `ft-orchestrator` reads `fix.json` and calls `gf-branch → gf-commit → gf-push → gf-pr`
 
 ## Inputs
 
@@ -105,40 +110,9 @@ npx playwright test <spec-path> --project=chromium
 ```
 
 - If **passing** → proceed to step 7
-- If **still failing** → do not ship; write `fix.json` with `verdict: "needs-human"` and explain what you tried
+- If **still failing** → write `fix.json` with `verdict: "needs-human"` and explain what you tried; stop here
 
-### 7. Ship the fix via git workflow
-
-Run the git skills in order:
-
-**Step 7a — Create branch:**
-Use `gf-branch` with a work-item-id derived from the spec name or classification:
-```bash
-bash .claude/skills/git-flow/scripts/create-branch.sh \
-  --work-item-id "fix-$(date +%Y%m%d)" \
-  --title "fix failing test <spec-basename>"
-```
-
-**Step 7b — Commit:**
-```bash
-bash .claude/skills/git-flow/scripts/create-commit.sh \
-  --type fix \
-  --scope test \
-  --subject "correct failing locator in <spec-basename>" \
-  --files <spec-path>
-```
-
-**Step 7c — Push:**
-```bash
-bash .claude/skills/git-flow/scripts/push-branch.sh
-```
-
-**Step 7d — PR:**
-```bash
-bash .claude/skills/git-flow/scripts/create-pr.sh --base main
-```
-
-### 8. Write fix.json
+### 7. Write fix.json
 
 Write `.workflow-artifacts/{run_id}/fix.json`:
 
@@ -147,12 +121,12 @@ Write `.workflow-artifacts/{run_id}/fix.json`:
   "verdict": "success",
   "spec": "tests/critical-checkout-validation-fail.spec.ts",
   "fix_type": "locator-update",
-  "branch_name": "task/fix-20240601-fix-failing-test",
-  "commit_sha": "deadbeef...",
-  "pr_url": "https://github.com/org/repo/pull/88",
   "classification_source": "ft-classifier"
 }
 ```
+
+Git shipping (`branch_name`, `commit_sha`, `pr_url`) is added by `ft-orchestrator` after it calls
+the `gf-*` skills — do not include those fields when running standalone.
 
 For `verdict: "needs-human"`:
 ```json
@@ -169,7 +143,6 @@ For `verdict: "needs-human"`:
 
 - Only run when `verdict == "test-bug"` and `confidence >= 0.55`.
 - Change **test code only** — never touch application source.
-- Always verify the fix passes before shipping.
-- Use `gf-*` skills for all git operations — do not run raw git commands.
-- Do not force-push or commit on `main`.
+- Always verify the fix passes before writing `fix.json` with `verdict: "success"`.
+- **Never** create branches, commit, push, or open PRs — that is `ft-orchestrator`'s job.
 - If the fix does not work, emit `needs-human` — do not guess or try random changes.

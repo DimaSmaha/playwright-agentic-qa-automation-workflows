@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Load .env from project root if present and vars not already set
+if [[ -f "${PWD}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${PWD}/.env"
+  set +a
+fi
+
 WORKFLOW_DIR="${WORKFLOW_ARTIFACTS_DIR:-${PWD}/.workflow-artifacts}"
 CACHE_PATH="${WORKFLOW_DIR}/.tracker-cache.json"
 

@@ -72,8 +72,24 @@ Invoke `ft-classifier` with the `repro.json` from Phase 1.
 | `needs-human` | any | Present signals and stop; human decision required |
 
 **Phase 3A — Test fix (`ft-test-fix-runner`):**
-- **SUCCESS:** `fix.json` written, PR URL available
+- **SUCCESS:** `fix.json` written with `verdict: "success"`; proceed to Phase 3A-git
 - **FAILED / needs-human:** report what was tried, stop
+
+**Phase 3A-git — Ship the fix (only after fix.json verdict = "success"):**
+
+Run the git skills in order:
+
+```
+gf-branch  →  gf-commit  →  gf-push  →  gf-pr
+```
+
+Pass these values to the skills:
+- `gf-branch`: work-item-id = `fix-<YYYYMMDD>`, title from `fix.json.spec` basename
+- `gf-commit`: type=`fix`, scope=`test`, subject derived from `fix.json.fix_type` and spec name; stage only the modified spec file
+- `gf-pr`: base = `CORE_BRANCH` from env (default `master`)
+
+On completion, patch `fix.json` to add `branch_name`, `commit_sha`, and `pr_url`.
+If any git step fails, report the error and stop — do not retry.
 
 **Phase 3B — Bug report (`ft-bug-reporter`):**
 - **SUCCESS:** `bug.json` written, bug created in tracker
@@ -84,11 +100,12 @@ Invoke `ft-classifier` with the `repro.json` from Phase 1.
 Output a phase table:
 
 ```
-| Phase | Skill              | Status  | Output                               |
-|-------|--------------------|---------|--------------------------------------|
-| 1     | ft-repro           | SUCCESS | .workflow-artifacts/ft-.../repro.json |
-| 2     | ft-classifier      | SUCCESS | verdict: test-bug, confidence: 0.85  |
-| 3A    | ft-test-fix-runner | SUCCESS | PR: https://github.com/.../pull/88   |
+| Phase  | Skill              | Status  | Output                                         |
+|--------|--------------------|---------|------------------------------------------------|
+| 1      | ft-repro           | SUCCESS | .workflow-artifacts/ft-.../repro.json          |
+| 2      | ft-classifier      | SUCCESS | verdict: test-bug, confidence: 0.85            |
+| 3A     | ft-test-fix-runner | SUCCESS | fix.json (verdict: success)                    |
+| 3A-git | gf-branch/commit/push/pr | SUCCESS | PR: https://github.com/.../pull/88      |
 
 Run ID:    ft-20240601-143012
 Verdict:   test-bug (0.85)
