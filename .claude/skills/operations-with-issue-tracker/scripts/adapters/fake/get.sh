@@ -27,17 +27,12 @@ raw="$(curl_with_retry GET "$URL")"
 
 # Normalize to the standard get.sh contract shape.
 # Fake tracker returns varying shapes; we extract what we can.
-title="$(printf '%s' "$raw" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('title',''))" 2>/dev/null || true)"
+title="$(printf '%s' "$raw" | jq -r '.title // ""' 2>/dev/null || true)"
 if [[ "$PATH_SEGMENT" == "testcases" ]]; then
   # Test case records have `steps` array instead of `description`
-  description="$(printf '%s' "$raw" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-steps=d.get('steps',[])
-print('\n'.join(steps) if steps else d.get('description',''))
-" 2>/dev/null || true)"
+  description="$(printf '%s' "$raw" | jq -r 'if (.steps | length) > 0 then .steps | join("\n") else (.description // "") end' 2>/dev/null || true)"
 else
-  description="$(printf '%s' "$raw" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('description',''))" 2>/dev/null || true)"
+  description="$(printf '%s' "$raw" | jq -r '.description // ""' 2>/dev/null || true)"
 fi
 
 if [[ -z "$title" ]]; then

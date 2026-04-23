@@ -29,23 +29,13 @@ EXISTING=$(curl -sf -H "$AUTH_HEADER" \
   "${API}?sourceRefName=refs/heads/${BRANCH}&targetRefName=refs/heads/${PR_BASE}&status=active&${API_VERSION}" \
   2>/dev/null || echo '{"value":[]}')
 
-EXISTING_COUNT=$(echo "$EXISTING" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('value',[])))" 2>/dev/null || echo 0)
+EXISTING_COUNT=$(printf '%s' "$EXISTING" | jq '.value | length' 2>/dev/null || echo 0)
 
 if [[ "$EXISTING_COUNT" -gt 0 ]]; then
-  echo "$EXISTING" | python3 -c "
-import sys, json, os
-pr = json.load(sys.stdin)['value'][0]
-wi = os.environ.get('PR_WORK_ITEM_ID', '')
-org, proj, repo = os.environ['ORG'], os.environ['PROJECT'], os.environ['REPO']
-url = f'https://dev.azure.com/{org}/{proj}/_git/{repo}/pullrequest/{pr[\"pullRequestId\"]}'
-print(json.dumps({
-  'id':                 pr['pullRequestId'],
-  'url':                url,
-  'title':              pr['title'],
-  'linked_work_item_id': int(wi) if wi else None,
-  'deduped':            True
-}))
-" ORG="$ORG" PROJECT="$PROJECT" REPO="$REPO"
+  printf '%s' "$EXISTING" | jq -c \
+    --arg org "$ORG" --arg proj "$PROJECT" --arg repo "$REPO" \
+    --argjson wi "${PR_WORK_ITEM_ID:-null}" \
+    '.value[0] | {"id":.pullRequestId,"url":("https://dev.azure.com/"+$org+"/"+$proj+"/_git/"+$repo+"/pullrequest/"+(.pullRequestId|tostring)),"title":.title,"linked_work_item_id":$wi,"deduped":true}'
   exit 0
 fi
 
@@ -57,17 +47,14 @@ if [[ -n "${PR_WORK_ITEM_ID:-}" ]]; then
   WI_REFS="[{\"id\":${PR_WORK_ITEM_ID}}]"
 fi
 
-REQUEST=$(python3 -c "
-import json, os
-print(json.dumps({
-  'sourceRefName': f'refs/heads/{os.environ[\"BRANCH\"]}',
-  'targetRefName': f'refs/heads/{os.environ[\"PR_BASE\"]}',
-  'title':         os.environ['PR_TITLE'],
-  'description':   os.environ['PR_BODY'],
-  'isDraft':       os.environ['PR_DRAFT'] == 'true',
-  'workItemRefs':  json.loads(os.environ['WI_REFS']),
-}))
-" BRANCH="$BRANCH" WI_REFS="$WI_REFS")
+REQUEST=$(jq -n \
+  --arg source "refs/heads/$BRANCH" \
+  --arg target "refs/heads/$PR_BASE" \
+  --arg title "$PR_TITLE" \
+  --arg desc "$PR_BODY" \
+  --argjson draft "$DRAFT_BOOL" \
+  --argjson wi_refs "$WI_REFS" \
+  '{"sourceRefName":$source,"targetRefName":$target,"title":$title,"description":$desc,"isDraft":$draft,"workItemRefs":$wi_refs}')
 
 RESPONSE=$(curl -sf -X POST \
   -H "$AUTH_HEADER" \
@@ -75,17 +62,7 @@ RESPONSE=$(curl -sf -X POST \
   -d "$REQUEST" \
   "${API}?${API_VERSION}" 2>/dev/null) || json_err "Azure DevOps API request failed"
 
-python3 -c "
-import json, sys, os
-pr = json.loads('''$RESPONSE''')
-wi = os.environ.get('PR_WORK_ITEM_ID', '')
-org, proj, repo = os.environ['ORG'], os.environ['PROJECT'], os.environ['REPO']
-url = f'https://dev.azure.com/{org}/{proj}/_git/{repo}/pullrequest/{pr[\"pullRequestId\"]}'
-print(json.dumps({
-  'id':                 pr['pullRequestId'],
-  'url':                url,
-  'title':              pr['title'],
-  'linked_work_item_id': int(wi) if wi else None,
-  'deduped':            False
-}))
-" ORG="$ORG" PROJECT="$PROJECT" REPO="$REPO"
+printf '%s' "$RESPONSE" | jq -c \
+  --arg org "$ORG" --arg proj "$PROJECT" --arg repo "$REPO" \
+  --argjson wi "${PR_WORK_ITEM_ID:-null}" \
+  '{"id":.pullRequestId,"url":("https://dev.azure.com/"+$org+"/"+$proj+"/_git/"+$repo+"/pullrequest/"+(.pullRequestId|tostring)),"title":.title,"linked_work_item_id":$wi,"deduped":false}'

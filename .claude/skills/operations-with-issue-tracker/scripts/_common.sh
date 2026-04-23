@@ -152,10 +152,6 @@ is_valid_json() {
     printf '%s' "$payload" | jq -e . >/dev/null 2>&1
     return $?
   fi
-  if command -v python3 >/dev/null 2>&1; then
-    printf '%s' "$payload" | python3 -m json.tool >/dev/null 2>&1
-    return $?
-  fi
   printf '%s' "$payload" | grep -Eq '^[[:space:]]*[{[]'
 }
 
@@ -163,10 +159,6 @@ normalize_json() {
   local payload="${1-}"
   if command -v jq >/dev/null 2>&1; then
     printf '%s' "$payload" | jq -c .
-    return 0
-  fi
-  if command -v python3 >/dev/null 2>&1; then
-    printf '%s' "$payload" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), separators=(",",":")))' 2>/dev/null
     return 0
   fi
   printf '%s' "$payload" | tr -d '\r' | tr '\n' ' '

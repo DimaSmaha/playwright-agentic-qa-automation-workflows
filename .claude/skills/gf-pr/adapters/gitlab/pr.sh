@@ -17,7 +17,7 @@ TOKEN="${GITLAB_TOKEN:-}" ; [[ -z "$TOKEN" ]] && json_err "GITLAB_TOKEN not set"
 HOST="${GITLAB_HOST:-gitlab.com}"
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${REPO_OWNER}/${REPO_NAME}', safe=''))")
+ENCODED_PATH="${REPO_OWNER}%2F${REPO_NAME}"
 API="https://${HOST}/api/v4/projects/${ENCODED_PATH}"
 AUTH_HEADER="PRIVATE-TOKEN: ${TOKEN}"
 
@@ -26,37 +26,24 @@ EXISTING=$(curl -sf -H "$AUTH_HEADER" \
   "${API}/merge_requests?state=opened&source_branch=${BRANCH}&target_branch=${PR_BASE}" \
   2>/dev/null || echo "[]")
 
-EXISTING_COUNT=$(echo "$EXISTING" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+EXISTING_COUNT=$(printf '%s' "$EXISTING" | jq 'length' 2>/dev/null || echo 0)
 
 if [[ "$EXISTING_COUNT" -gt 0 ]]; then
-  echo "$EXISTING" | python3 -c "
-import sys, json, os
-mr = json.load(sys.stdin)[0]
-wi = os.environ.get('PR_WORK_ITEM_ID', '')
-print(json.dumps({
-  'id':                 mr['iid'],
-  'url':                mr['web_url'],
-  'title':              mr['title'],
-  'linked_work_item_id': int(wi) if wi else None,
-  'deduped':            True
-}))
-"
+  printf '%s' "$EXISTING" | jq -c \
+    --argjson wi "${PR_WORK_ITEM_ID:-null}" \
+    '.[0] | {"id":.iid,"url":.web_url,"title":.title,"linked_work_item_id":$wi,"deduped":true}'
   exit 0
 fi
 
 # ── create MR ─────────────────────────────────────────────────────────────────
 WIP_PREFIX=$( [[ "$PR_DRAFT" == true ]] && echo "Draft: " || echo "" )
 
-REQUEST=$(python3 -c "
-import json, os
-print(json.dumps({
-  'source_branch':        os.environ['BRANCH'],
-  'target_branch':        os.environ['PR_BASE'],
-  'title':                os.environ.get('WIP_PREFIX','') + os.environ['PR_TITLE'],
-  'description':          os.environ['PR_BODY'],
-  'remove_source_branch': True,
-}))
-" BRANCH="$BRANCH" WIP_PREFIX="$WIP_PREFIX")
+REQUEST=$(jq -n \
+  --arg source "$BRANCH" \
+  --arg target "$PR_BASE" \
+  --arg title "${WIP_PREFIX}${PR_TITLE}" \
+  --arg desc "$PR_BODY" \
+  '{"source_branch":$source,"target_branch":$target,"title":$title,"description":$desc,"remove_source_branch":true}')
 
 RESPONSE=$(curl -sf -X POST \
   -H "$AUTH_HEADER" \
@@ -64,15 +51,6 @@ RESPONSE=$(curl -sf -X POST \
   -d "$REQUEST" \
   "${API}/merge_requests" 2>/dev/null) || json_err "GitLab API request failed"
 
-python3 -c "
-import json, sys, os
-mr = json.loads('''$RESPONSE''')
-wi = os.environ.get('PR_WORK_ITEM_ID', '')
-print(json.dumps({
-  'id':                 mr['iid'],
-  'url':                mr['web_url'],
-  'title':              mr['title'],
-  'linked_work_item_id': int(wi) if wi else None,
-  'deduped':            False
-}))
-"
+printf '%s' "$RESPONSE" | jq -c \
+  --argjson wi "${PR_WORK_ITEM_ID:-null}" \
+  '{"id":.iid,"url":.web_url,"title":.title,"linked_work_item_id":$wi,"deduped":false}'

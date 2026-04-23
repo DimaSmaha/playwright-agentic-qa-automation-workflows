@@ -32,12 +32,9 @@ PHASES_JSON="[]"
 phase_record() {
   local phase="$1" status="$2" detail="$3"
   printf "%-8s %-8s %s\n" "$phase" "$status" "$detail" >&2
-  PHASES_JSON=$(python3 -c "
-import json, sys
-phases = json.loads('''$PHASES_JSON''')
-phases.append({'phase': '$phase', 'status': '$status', 'detail': '$detail'})
-print(json.dumps(phases))
-")
+  PHASES_JSON=$(printf '%s' "$PHASES_JSON" | jq -c \
+    --arg phase "$phase" --arg status "$status" --arg detail "$detail" \
+    '. + [{"phase":$phase,"status":$status,"detail":$detail}]')
 }
 
 fatal() {
@@ -83,7 +80,7 @@ BRANCH_RESULT=$(bash "${SKILLS_DIR}/gf-branch/scripts/create-branch.sh" \
   --title "${WORK_ITEM_TITLE:-}" \
   --base "$BASE" 2>/dev/null) || fatal "BRANCH" "$BRANCH_RESULT"
 
-BRANCH_NAME=$(python3 -c "import json,sys; print(json.loads('''$BRANCH_RESULT''')['branch'])" 2>/dev/null || echo "unknown")
+BRANCH_NAME=$(printf '%s' "$BRANCH_RESULT" | jq -r '.branch // "unknown"' 2>/dev/null || echo "unknown")
 phase_record "BRANCH" "SUCCESS" "$BRANCH_NAME"
 
 # ── phase 2: commit ───────────────────────────────────────────────────────────
@@ -94,14 +91,14 @@ COMMIT_ARGS=(--type "$COMMIT_TYPE" --subject "$COMMIT_SUBJECT")
 COMMIT_RESULT=$(bash "${SKILLS_DIR}/gf-commit/scripts/create-commit.sh" "${COMMIT_ARGS[@]}" 2>/dev/null) \
   || fatal "COMMIT" "$COMMIT_RESULT"
 
-COMMIT_MSG=$(python3 -c "import json,sys; print(json.loads('''$COMMIT_RESULT''')['message'])" 2>/dev/null || echo "committed")
+COMMIT_MSG=$(printf '%s' "$COMMIT_RESULT" | jq -r '.message // "committed"' 2>/dev/null || echo "committed")
 phase_record "COMMIT" "SUCCESS" "$COMMIT_MSG"
 
 # ── phase 3: push ─────────────────────────────────────────────────────────────
 PUSH_RESULT=$(bash "${SKILLS_DIR}/gf-push/scripts/push-branch.sh" 2>/dev/null) \
   || fatal "PUSH" "$PUSH_RESULT"
 
-PUSHED_SHA=$(python3 -c "import json,sys; r=json.loads('''$PUSH_RESULT'''); print(r['remote']+'/'+r['branch'])" 2>/dev/null || echo "pushed")
+PUSHED_SHA=$(printf '%s' "$PUSH_RESULT" | jq -r '(.remote + "/" + .branch) // "pushed"' 2>/dev/null || echo "pushed")
 phase_record "PUSH" "SUCCESS" "$PUSHED_SHA"
 
 # ── phase 4: pr ───────────────────────────────────────────────────────────────
@@ -112,7 +109,7 @@ PR_ARGS=(--work-item-id "$WORK_ITEM_ID" --base "$BASE")
 PR_RESULT=$(bash "${SKILLS_DIR}/gf-pr/scripts/create-pr.sh" "${PR_ARGS[@]}" 2>/dev/null) \
   || fatal "PR" "$PR_RESULT"
 
-PR_URL=$(python3 -c "import json,sys; print(json.loads('''$PR_RESULT''')['url'])" 2>/dev/null || echo "unknown")
+PR_URL=$(printf '%s' "$PR_RESULT" | jq -r '.url // "unknown"' 2>/dev/null || echo "unknown")
 phase_record "PR" "SUCCESS" "$PR_URL"
 
 printf "%s\n\n" "----------------------------------------" >&2

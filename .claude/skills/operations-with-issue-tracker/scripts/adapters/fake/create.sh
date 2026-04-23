@@ -49,10 +49,8 @@ escaped_dedupe="$(json_escape "$DEDUPE_BY")"
 if [[ "$PATH_SEGMENT" == "testcases" ]]; then
   # /testcases/create requires `steps` array, not `description`
   if [[ -n "$DESCRIPTION" ]]; then
-    steps_json="$(printf '%s' "$DESCRIPTION" | python3 -c "
-import sys, json
-lines = [l for l in sys.stdin.read().splitlines() if l.strip()]
-print(json.dumps(lines if lines else ['${escaped_title}']))")"
+    steps_json="$(printf '%s' "$DESCRIPTION" | jq -Rs '[split("\n")[] | select(length > 0)]')"
+    [[ "$steps_json" == "[]" ]] && steps_json="[\"${escaped_title}\"]"
   else
     steps_json="[\"${escaped_title}\"]"
   fi

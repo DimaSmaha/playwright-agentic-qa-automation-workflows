@@ -22,10 +22,11 @@ EXISTING=$(curl -sf -H "$AUTH_HEADER" \
   "${API}/pulls?state=open&head=${REPO_OWNER}:${BRANCH}&base=${PR_BASE}" \
   2>/dev/null || echo "[]")
 
-EXISTING_COUNT=$(echo "$EXISTING" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+EXISTING_COUNT=$(printf '%s' "$EXISTING" | jq 'length' 2>/dev/null || echo 0)
 
 if [[ "$EXISTING_COUNT" -gt 0 ]]; then
-  EXISTING_PR=$(echo "$EXISTING" | python3 -c "import sys,json; pr=json.load(sys.stdin)[0]; print(json.dumps({'id':pr['number'],'url':pr['html_url'],'title':pr['title'],'linked_work_item_id':${PR_WORK_ITEM_ID:-0},'deduped':True}))")
+  EXISTING_PR=$(printf '%s' "$EXISTING" | jq -c --argjson wi "${PR_WORK_ITEM_ID:-0}" \
+    '.[0] | {"id":.number,"url":.html_url,"title":.title,"linked_work_item_id":$wi,"deduped":true}')
   echo "$EXISTING_PR"
   exit 0
 fi
@@ -33,16 +34,13 @@ fi
 # ── build request body ────────────────────────────────────────────────────────
 DRAFT_BOOL=$( [[ "$PR_DRAFT" == true ]] && echo "true" || echo "false" )
 
-REQUEST=$(python3 -c "
-import json, sys, os
-print(json.dumps({
-  'title': os.environ['PR_TITLE'],
-  'body':  os.environ['PR_BODY'],
-  'head':  os.environ.get('BRANCH', ''),
-  'base':  os.environ['PR_BASE'],
-  'draft': os.environ['PR_DRAFT'] == 'true'
-}))
-" BRANCH="$BRANCH")
+REQUEST=$(jq -n \
+  --arg title "$PR_TITLE" \
+  --arg body "$PR_BODY" \
+  --arg head "$BRANCH" \
+  --arg base "$PR_BASE" \
+  --argjson draft "$DRAFT_BOOL" \
+  '{"title":$title,"body":$body,"head":$head,"base":$base,"draft":$draft}')
 
 # ── create PR ─────────────────────────────────────────────────────────────────
 RESPONSE=$(curl -sf -X POST \
@@ -51,15 +49,6 @@ RESPONSE=$(curl -sf -X POST \
   -d "$REQUEST" \
   "${API}/pulls" 2>/dev/null) || json_err "GitHub API request failed"
 
-python3 -c "
-import json, sys, os
-pr = json.loads('''$RESPONSE''')
-wi = os.environ.get('PR_WORK_ITEM_ID', '')
-print(json.dumps({
-  'id':                 pr['number'],
-  'url':                pr['html_url'],
-  'title':              pr['title'],
-  'linked_work_item_id': int(wi) if wi else None,
-  'deduped':            False
-}))
-"
+printf '%s' "$RESPONSE" | jq -c \
+  --argjson wi "${PR_WORK_ITEM_ID:-null}" \
+  '{"id":.number,"url":.html_url,"title":.title,"linked_work_item_id":$wi,"deduped":false}'
