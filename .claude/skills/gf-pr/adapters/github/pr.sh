@@ -25,7 +25,7 @@ EXISTING=$(curl -sf -H "$AUTH_HEADER" \
 EXISTING_COUNT=$(printf '%s' "$EXISTING" | jq 'length' 2>/dev/null || echo 0)
 
 if [[ "$EXISTING_COUNT" -gt 0 ]]; then
-  EXISTING_PR=$(printf '%s' "$EXISTING" | jq -c --argjson wi "${PR_WORK_ITEM_ID:-0}" \
+  EXISTING_PR=$(printf '%s' "$EXISTING" | jq -c --arg wi "${PR_WORK_ITEM_ID:-}" \
     '.[0] | {"id":.number,"url":.html_url,"title":.title,"linked_work_item_id":$wi,"deduped":true}')
   echo "$EXISTING_PR"
   exit 0
@@ -50,5 +50,5 @@ RESPONSE=$(curl -sf -X POST \
   "${API}/pulls" 2>/dev/null) || json_err "GitHub API request failed"
 
 printf '%s' "$RESPONSE" | jq -c \
-  --argjson wi "${PR_WORK_ITEM_ID:-null}" \
+  --arg wi "${PR_WORK_ITEM_ID:-}" \
   '{"id":.number,"url":.html_url,"title":.title,"linked_work_item_id":$wi,"deduped":false}'
