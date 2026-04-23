@@ -122,10 +122,34 @@ Additionally design from these categories as applicable:
 | Read-only verification | Data persisted correctly after save; correct display |
 | Exploratory | Suspicious behavior noticed during playwright-cli exploration |
 | Concurrency | Two users performing the same action, quick double-clicks |
+| Role / permission violation | Attempt the action as an unauthorized role or unauthenticated user |
+| Cross-field validation | Conflicting field combinations that each pass individual rules but fail together |
+| Data integrity | Delete a parent record while a child exists; reference a deleted entity |
+| Session interruption | Token expiry mid-flow, forced logout, page reload during an in-progress operation |
 
 **Negative scenarios are mandatory** — every AC must have at least one negative test.
 
-### 5. Write scenarios.md
+### 5. Write exploratory charters
+
+For each acceptance criterion, generate one exploratory charter. Append a
+`## Exploratory Charters` section to `scenarios.md` after the scenario list.
+
+Charter format:
+
+```markdown
+### Charter: <AC short label>
+- **Mission:** Explore [feature area] with [heuristic] to discover [risk type]
+- **Heuristics:** CRUD completeness | Boundary (too big / too small / empty) | Interruption (back, refresh, network drop, session expiry) | State machine (sequence violations)
+- **Personas:**
+  - Speedrunner — clicks fast, skips reading, submits before page settles
+  - New User — unfamiliar with field rules, tries unexpected sequences
+  - Attacker — probes permission boundaries, tests unauthorized access paths
+```
+
+Include only heuristics and personas that are relevant to the AC. Skip any that
+do not apply — do not pad with generic text.
+
+### 6. Write scenarios.md
 
 Write `.workflow-artifacts/{run_id}/scenarios.md`:
 
@@ -136,17 +160,28 @@ Write `.workflow-artifacts/{run_id}/scenarios.md`:
 ## [P1] Auth: Login with invalid password shows error message "Invalid username or password"
 ## [P2] Auth: Login with empty username shows validation error
 ## [P2] Auth: Login form blocks submission when password field is empty
+## [P2] Auth: Login attempt as unauthenticated API call returns 401
 ## [P3] Auth: Cancel login flow returns to landing page
+## [P3] Auth: Session token expiry during login redirects to login page
 ## [SKIP] Auth: Logout flow — already covered in tests/example.spec.ts
+
+## Exploratory Charters
+
+### Charter: Login
+- **Mission:** Explore login form with Interruption heuristic to discover race conditions on fast submission
+- **Heuristics:** Boundary (empty / max-length credentials) | Interruption (network drop mid-submit, page refresh) | State machine (submit while validation is pending)
+- **Personas:**
+  - Speedrunner — submits before autofill completes
+  - Attacker — tries SQL injection in username field, reuses expired session token
 ```
 
-Format: `## [P{priority}] <Module>: <description>` — priority 1 = highest.
+Format for scenario list: `## [P{priority}] <Module>: <description>` — priority 1 = highest.
 SKIP entries include the path of the covering spec.
 
 ## Output
 
 - `.workflow-artifacts/{run_id}/us.json`
-- `.workflow-artifacts/{run_id}/scenarios.md`
+- `.workflow-artifacts/{run_id}/scenarios.md` (includes scenario list + `## Exploratory Charters` section)
 
 Tell the user: "Pass these artifacts to `gt-test-ideation` to expand scenarios into test design."
 
