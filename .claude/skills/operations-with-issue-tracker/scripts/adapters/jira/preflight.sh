@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOT TESTED — requires live credentials; no automated test coverage.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

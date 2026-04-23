@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOT TESTED — requires live credentials; no automated test coverage.
 # adapters/ado/pr.sh — Azure DevOps Pull Request adapter for gf-pr
 # Uses Azure DevOps REST API via curl + ADO_TOKEN (Personal Access Token).
 #

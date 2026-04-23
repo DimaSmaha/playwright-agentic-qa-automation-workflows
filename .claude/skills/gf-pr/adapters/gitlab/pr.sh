@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOT TESTED — requires live credentials; no automated test coverage.
 # adapters/gitlab/pr.sh — GitLab Merge Request adapter for gf-pr
 # Uses GitLab REST API v4 via curl + GITLAB_TOKEN.
 #
