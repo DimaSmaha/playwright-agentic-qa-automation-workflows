@@ -29,16 +29,15 @@ Do **not** use it for:
 
 ## Workflow
 
-### 1. Stage all modified files
+### 1. Stage all changes
 
 Run:
 
 ```bash
-git add -u
+git add .
 ```
 
-This stages every tracked modified/deleted file. Untracked new files are not staged
-automatically. Secrets are blocked by the commit script.
+This stages all changes — modified, deleted, and new untracked files. Secrets are blocked by the commit script.
 
 ### 2. Preview staged changes
 

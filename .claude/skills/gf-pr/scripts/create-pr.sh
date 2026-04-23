@@ -20,7 +20,7 @@
 set -euo pipefail
 
 # Load .env from repo root if GITHUB_TOKEN is not already in the environment
-[ -z "${GITHUB_TOKEN:-}" ] && [ -f .env ] && source .env
+[ -z "${GITHUB_TOKEN:-}" ] && [ -f .env ] && { set -a; source .env; set +a; }
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 json_err() { printf '{"error":"%s"}\n' "$1"; exit 1; }
