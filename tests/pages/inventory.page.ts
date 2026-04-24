@@ -35,6 +35,21 @@ export class InventoryPage {
     await expect(this.page).toHaveURL(/.*cart.html/);
   }
 
+  async clickFirstProductName() {
+    await this.page.locator('[data-test$="-title-link"]').first().click();
+    await expect(this.page).toHaveURL(/.*inventory-item\.html/);
+  }
+
+  async clickFirstProductImage() {
+    await this.page.locator('[data-test$="-img"]').first().click();
+    await expect(this.page).toHaveURL(/.*inventory-item\.html/);
+  }
+
+  async clickProductName(name: string) {
+    await this.page.getByRole("link", { name }).first().click();
+    await expect(this.page).toHaveURL(/.*inventory-item\.html/);
+  }
+
   async sortByLowToHigh() {
     await this.page
       .locator('[data-test="product-sort-container"]')
