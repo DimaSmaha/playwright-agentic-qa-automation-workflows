@@ -1,0 +1,140 @@
+{
+  "pipeline": "ft-orchestrator",
+  "description": "Pipeline B: Playwright failure triage — repro → classify → fix or report → ship",
+  "run_id_prefix": "ft",
+  "artifact_root": ".workflow-artifacts/{run_id}",
+  "phases": [
+    {
+      "id": "phase-1",
+      "label": "Reproduce",
+      "skill": "ft-repro",
+      "reads": [],
+      "writes": ["repro.json"],
+      "resume_skip_if": "repro.json",
+      "on_failure": "stop"
+    },
+    {
+      "id": "phase-2",
+      "label": "Classify",
+      "skill": "ft-classifier",
+      "reads": ["repro.json"],
+      "writes": ["classification.json"],
+      "resume_skip_if": "classification.json",
+      "on_failure": "stop"
+    },
+    {
+      "id": "phase-3",
+      "label": "Route",
+      "skill": null,
+      "reads": ["classification.json"],
+      "writes": [],
+      "on_failure": "stop",
+      "routing": {
+        "field": "verdict",
+        "rules": [
+          {
+            "match": "test-bug",
+            "min_confidence": 0.55,
+            "next_phase": "phase-3a"
+          },
+          {
+            "match": "app-bug",
+            "min_confidence": 0.6,
+            "next_phase": "phase-3b"
+          },
+          {
+            "match": "flaky",
+            "min_confidence": 0.45,
+            "next_phase": "phase-3-flaky"
+          },
+          {
+            "match": "infra",
+            "min_confidence": 0.65,
+            "next_phase": "phase-3-infra"
+          },
+          {
+            "match": "needs-human",
+            "min_confidence": 0,
+            "next_phase": "phase-3-stop"
+          }
+        ]
+      }
+    },
+    {
+      "id": "phase-3a",
+      "label": "Test Fix",
+      "skill": "ft-test-fix-runner",
+      "reads": ["repro.json", "classification.json"],
+      "writes": ["fix.json"],
+      "resume_skip_if": "fix.json",
+      "on_failure": "stop"
+    },
+    {
+      "id": "phase-3a-ship",
+      "label": "Ship Fix",
+      "skill": "gf-ship",
+      "reads": ["fix.json"],
+      "writes": [],
+      "depends_on": "phase-3a",
+      "depends_condition": "fix.json.verdict == 'success'",
+      "on_failure": "stop",
+      "ship_params": {
+        "work_item_id_template": "fix-{run_id}",
+        "commit_type": "fix",
+        "commit_scope": "test",
+        "commit_subject_template": "{fix_type} in {spec_basename}",
+        "files_template": "{spec_path}",
+        "base": "${CORE_BRANCH:-master}"
+      },
+      "post_action": "patch fix.json with pr_url and branch_name from gf-ship output"
+    },
+    {
+      "id": "phase-3b",
+      "label": "Bug Report",
+      "skill": "ft-bug-reporter",
+      "reads": ["repro.json", "classification.json"],
+      "writes": ["bug.json"],
+      "resume_skip_if": "bug.json",
+      "on_failure": "stop"
+    },
+    {
+      "id": "phase-3-flaky",
+      "label": "Flaky Report",
+      "skill": null,
+      "reads": ["classification.json"],
+      "writes": [],
+      "action": "report flaky; suggest retry annotation; no code change; stop pipeline"
+    },
+    {
+      "id": "phase-3-infra",
+      "label": "Infra Report",
+      "skill": null,
+      "reads": ["classification.json"],
+      "writes": [],
+      "action": "report infrastructure issue; no code change; stop pipeline"
+    },
+    {
+      "id": "phase-3-stop",
+      "label": "Needs Human",
+      "skill": null,
+      "reads": ["classification.json"],
+      "writes": [],
+      "action": "present signals; stop pipeline; human decision required"
+    }
+  ],
+  "compaction": {
+    "enabled": true,
+    "strategy": "emit-compact-block-then-drop",
+    "phases": {
+      "phase-1": {
+        "retain": ["run_id", "spec", "error_summary", "artifacts_paths"]
+      },
+      "phase-2": {
+        "retain": ["verdict", "confidence", "recommended_next_skill"]
+      },
+      "phase-3a": { "retain": ["verdict", "spec", "fix_type"] },
+      "phase-3b": { "retain": ["id", "url", "severity", "deduped"] },
+      "phase-3a-ship": { "retain": ["verdict", "pr_url", "branch_name"] }
+    }
+  }
+}
