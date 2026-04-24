@@ -96,7 +96,6 @@ Tell the user:
 ```
 tc-<n>.json written to .workflow-artifacts/{run_id}/
 Tracker upload: OK (id may be 0 for fake tracker — expected)
-Pass tc-<n>.json to gt-spec-writer to generate the Playwright spec.
 ```
 
 List every tc file created when processing multiple scenarios.

@@ -50,8 +50,7 @@ If neither provided, stop immediately and report: "gt-us-to-spec requires --us-i
 ### Phase 0 — Initialize
 
 ```bash
-run_id="gt-$(date +%Y%m%d-%H%M%S)"
-mkdir -p ".workflow-artifacts/${run_id}"
+run_id="$(bash .claude/skills/gt-us-to-spec/scripts/init.sh)"
 ```
 
 Confirm ISSUE_TRACKER and FAKE_TRACKER_URL (or other tracker vars) are set.
