@@ -11,6 +11,9 @@ description: >
 
 EXPLICIT-INVOCATION ONLY.
 
+> **NEVER re-ask the user for any input, confirmation, or clarification during execution.**
+> All decisions are resolved from artifacts and env vars. Stop-and-report is the only permitted response to missing inputs.
+
 For any partial flow (just planning, just ideation, just one spec), use the
 individual `gt-*` skills instead of this orchestrator.
 
@@ -53,7 +56,7 @@ If neither provided, stop immediately and report: "gt-us-to-spec requires --us-i
 run_id="$(bash .claude/skills/gt-us-to-spec/scripts/init.sh)"
 ```
 
-Confirm ISSUE_TRACKER and FAKE_TRACKER_URL (or other tracker vars) are set.
+Confirm ISSUE_TRACKER and FAKE_TRACKER_URL (or other tracker vars) are set. If missing, stop and report exactly which vars are absent — do not ask interactively.
 
 ### Phase 1 — Plan (`gt-story-planner`)
 

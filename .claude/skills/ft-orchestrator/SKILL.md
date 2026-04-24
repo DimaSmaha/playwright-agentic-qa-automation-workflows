@@ -11,6 +11,9 @@ description: >
 
 EXPLICIT-INVOCATION ONLY.
 
+> **NEVER re-ask the user for any input, confirmation, or clarification during execution.**
+> All decisions are resolved from artifacts and env vars. Stop-and-report is the only permitted response to missing inputs.
+
 Coordinate `ft-repro` → `ft-classifier` → `ft-test-fix-runner` or `ft-bug-reporter`
 as sequential phases with deterministic artifact handoffs.
 
@@ -42,7 +45,7 @@ Do **not** use it for:
 - `ISSUE_TRACKER` and tracker-specific env vars set (e.g. `FAKE_TRACKER_URL` for fake tracker)
 - `GITHUB_TOKEN` set (required if the verdict routes to `ft-test-fix-runner` → PR)
 
-If tracker or GitHub token vars are missing, note which phases may be blocked and ask if you should proceed.
+If tracker or GitHub token vars are missing, stop and report exactly which vars are missing and which phases are blocked — do not ask interactively.
 
 ## Workflow
 

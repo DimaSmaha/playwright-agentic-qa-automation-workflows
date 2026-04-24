@@ -37,17 +37,19 @@ Skills source `.env` automatically via `_common.sh`. The fake tracker server mus
 ```
 gt-story-planner → gt-test-ideation → gt-test-case-generator → gt-spec-writer → gt-refactor-tests
 ```
-Each stage reads the previous stage's artifact from `.workflow-artifacts/` and writes its own. Artifacts: `us.json` → `scenarios.md` → `test-ideas.json` → `tc-N.json` → `.spec.ts`.
+Each stage reads the previous stage's artifact from `.workflow-artifacts/` and writes its own. Artifacts: `us.json` → `scenarios.md` → `test-ideas.json` → `tc-N.json` → `spec-N.json` + `.spec.ts`. Passing specs are shipped via `gf-ship`; failing specs route to `ft-bug-reporter` only.
 
 **Pipeline B — Test Failure Triage** (invoked with `/ft-orchestrator`):
 ```
 ft-repro → ft-classifier → [ft-test-fix-runner | ft-bug-reporter]
 ```
-`ft-repro` re-runs the failing spec and collects evidence (trace, video, screenshot) into `repro.json`. `ft-classifier` produces `classification.json` with a verdict (`test-bug`, `app-bug`, `flaky`, `infra`, `needs-human`) and confidence score. Routing: ≥55% test-bug → PR fix; ≥60% app-bug → bug in tracker.
+`ft-repro` re-runs the failing spec and collects evidence (trace, video, screenshot) into `repro.json`. `ft-classifier` produces `classification.json` with a verdict (`test-bug`, `app-bug`, `flaky`, `infra`, `needs-human`) and confidence score. Routing: ≥55% test-bug → `ft-test-fix-runner` + PR; ≥60% app-bug → `ft-bug-reporter`; flaky/infra → report only; needs-human → stop.
+
+**Both orchestrators are fully autonomous — they never re-ask the user mid-run.** Missing inputs or env vars cause an immediate stop-and-report, not a prompt.
 
 ### Skills system
 
-Skills live in `.claude/skills/` (invocable via `/skill-name`). Each skill has a `SKILL.md` that defines its contract, inputs, outputs, and trigger conditions. Three families:
+Skills live in `.claude/skills/` (invocable via `/skill-name`). Each skill has a `SKILL.md` that defines its contract, inputs, outputs, and trigger conditions. Four families:
 
 - **`gt-*`** — Pipeline A generation stages
 - **`ft-*`** — Pipeline B failure triage stages
@@ -57,6 +59,14 @@ Skills live in `.claude/skills/` (invocable via `/skill-name`). Each skill has a
 Additional reference skills in `.agents/skills/`: `playwright-best-practices`, `playwright-test-improver`, `decomposition-coverage`, `decomposition-maintenance`, `userstory-to-testcase`.
 
 **Explicit-invocation-only skills** (never auto-triggered): `gt-us-to-spec`, `ft-orchestrator`, `gf-ship`.
+
+**Hard constraints shared by all skills:**
+- Use `npx` (not `pnpm`) for Playwright commands
+- Never modify app code in `ft-test-fix-runner`
+- `gt-test-case-generator`: verbatim copy of ideas/verifications; `ideas.length === verifications.length`
+- `gt-story-planner` and `ft-classifier`: mandatory live app exploration via `playwright-cli` before writing artifacts
+- Fake tracker returns `{"id":0,...}` on create — this is expected, not an error
+- All tracker and git operations go through wrapper skills/scripts only
 
 ### Issue tracker scripts
 
