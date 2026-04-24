@@ -49,11 +49,10 @@ If tracker or GitHub token vars are missing, note which phases may be blocked an
 ### Phase 0 — Initialize
 
 ```bash
-run_id="ft-$(date +%Y%m%d-%H%M%S)"
-mkdir -p ".workflow-artifacts/${run_id}"
+run_id=$(bash .claude/skills/ft-orchestrator/scripts/init-run.sh)
 ```
 
-Confirm the spec path exists. If not provided, ask.
+Confirm the spec path exists. If not provided, stop and report the missing argument — do not ask interactively.
 
 ### Phase 1 — Reproduce (`ft-repro`)
 
@@ -163,6 +162,7 @@ Result:    https://github.com/org/repo/pull/88
 
 **Artifact contracts:**
 - All artifacts live in `.workflow-artifacts/{run_id}/` — use consistent `run_id` throughout.
+- Always pass `run_id` explicitly to every downstream skill invocation. Never allow a child skill to generate a new run_id.
 - Explicit invocation only — for any partial flow, use the individual ft-* or gf-* skills.
 - Stop on first phase failure; do not continue to later phases.
 - Tracker and git operations always go through the wrapper skills/scripts.

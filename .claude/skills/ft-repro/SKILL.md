@@ -55,12 +55,18 @@ test -f <spec-path>
 
 If missing, stop and tell the user.
 
-### 2. Generate a run_id
+### 2. Resolve run_id
+
+If `run_id` was provided as an argument (e.g. from `ft-orchestrator`), use it directly — do **not** generate a new one.
+
+Only generate a new run_id when running standalone (no `run_id` argument):
 
 ```bash
 run_id="ft-$(date +%Y%m%d-%H%M%S)"
 mkdir -p ".workflow-artifacts/${run_id}"
 ```
+
+Never overwrite a run_id that was passed in.
 
 ### 3. Run the failing test
 

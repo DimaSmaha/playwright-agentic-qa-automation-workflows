@@ -104,15 +104,29 @@ Run preflight if not already done:
 bash .claude/skills/operations-with-issue-tracker/scripts/preflight.sh
 ```
 
-Create the bug:
+Create the bug with up to 3 attempts (3-second delay between retries):
 
 ```bash
-bash .claude/skills/operations-with-issue-tracker/scripts/create.sh \
-  --type "Bug" \
-  --title "<error_summary from classification.json>" \
-  --description-file ".workflow-artifacts/${run_id}/bug-desc.md" \
-  --tag "claude-generated,automated-triage"
+max_attempts=3
+attempt=0
+create_result=""
+while [ $attempt -lt $max_attempts ]; do
+  attempt=$((attempt + 1))
+  create_result=$(bash .claude/skills/operations-with-issue-tracker/scripts/create.sh \
+    --type "Bug" \
+    --title "<error_summary from classification.json>" \
+    --description-file ".workflow-artifacts/${run_id}/bug-desc.md" \
+    --tag "claude-generated,automated-triage" 2>&1) && break
+  echo "Attempt $attempt failed. Retrying in 3s..." >&2
+  sleep 3
+done
+if [ -z "$create_result" ]; then
+  echo '{"error":"tracker create failed after 3 attempts"}' && exit 1
+fi
+echo "$create_result"
 ```
+
+Retry up to 3 times on transient failures (e.g. tracker temporarily unreachable). Fail the phase only after all attempts are exhausted.
 
 With the fake tracker, the response will be `{"id":0,"url":"...","deduped":false}`.
 This is expected — `id:0` is valid for the fake tracker.
