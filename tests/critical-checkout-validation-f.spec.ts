@@ -12,7 +12,6 @@ test.describe("[FTT] critical checkout validation flows", () => {
     await pages.cart.startCheckout();
 
     await pages.checkout.continueWithoutFirstName("Tester", "10001");
-    await pages.checkout.finishOrder();
-    await pages.checkout.assertOrderSuccess();
+    await pages.checkout.assertFirstNameRequiredError();
   });
 });
