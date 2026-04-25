@@ -183,6 +183,11 @@ and stop — do not invoke `gf-ship`.
 
 ## Hard rules
 
+**Bash execution — fully agentic, zero prompts:**
+- Run all bash commands directly: `bash .claude/skills/...` — never prefix with `cd /path &&` or `source .env &&`; the working directory and env are already set.
+- Do not chain env-var exports before bash calls; the scripts source `.env` via `_common.sh` automatically.
+- Never use compound `cd && source && bash` forms — they bypass the permission allowlist and trigger prompts.
+
 **Autonomous execution — never pause for human input:**
 - Do not ask the user to confirm any phase, scenario skip, or git operation.
 - Do not add "shall I proceed?" or approval gates anywhere in the flow.
