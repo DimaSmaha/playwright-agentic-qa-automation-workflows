@@ -61,9 +61,9 @@ ls -t .workflow-artifacts/*/test-ideas.json 2>/dev/null | head -1
 
 Confirm the `run_id` directory (e.g. `gt-20240601-143012`). All outputs go into that same directory.
 
-### 2. Run generate-tc.sh
+### 2. Run the appropriate script
 
-For each scenario to process:
+**Single scenario:**
 
 ```bash
 bash .claude/skills/gt-test-case-generator/scripts/generate-tc.sh \
@@ -82,7 +82,26 @@ The script:
 5. Writes `tc-<n>.json` — full artifact including all ideation context
 6. Prints `tc-<n>.json` on stdout
 
-For `scenario_index = "all"`, loop from 0 to `length(test-ideas.json) - 1`.
+**All scenarios (with retry logic):**
+
+For `scenario_index = "all"`, use `batch-generate-tc.sh` instead of looping manually:
+
+```bash
+bash .claude/skills/gt-test-case-generator/scripts/batch-generate-tc.sh \
+  --ideas-file ".workflow-artifacts/${run_id}/test-ideas.json" \
+  --run-dir    ".workflow-artifacts/${run_id}" \
+  [--us-id <id>] \
+  [--max-retries 3] \
+  [--retry-delay 5]
+```
+
+The batch script:
+1. Iterates every scenario index in `test-ideas.json`
+2. Skips indices where `tc-<n>.json` already exists (resume-safe)
+3. Calls `generate-tc.sh` for each remaining index
+4. On TMS failure (non-zero exit from `create.sh`), retries up to `--max-retries` times with exponential back-off starting at `--retry-delay` seconds
+5. Logs `[SKIP]` / `[OK]` / `[FAIL]` per scenario to stderr; exits 0 when all pass, 1 if any fail
+6. Failed scenarios can be retried by re-running the same command (resume-safe)
 
 ### 3. Resume safety
 
