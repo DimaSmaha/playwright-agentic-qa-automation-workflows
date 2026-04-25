@@ -35,6 +35,36 @@ export class InventoryPage {
     await expect(this.page).toHaveURL(/.*cart.html/);
   }
 
+  async clickProductName(name: string) {
+    await this.page
+      .locator('[data-test$="-title-link"]')
+      .filter({ hasText: name })
+      .click();
+  }
+
+  async assertProductNameLinkVisible(name: string) {
+    await expect(
+      this.page
+        .locator('[data-test$="-title-link"]')
+        .filter({ hasText: name }),
+    ).toBeVisible();
+  }
+
+  async clickProductImageLink(name: string) {
+    await this.page
+      .locator('[data-test="inventory-item"]')
+      .filter({ hasText: name })
+      .locator('[data-test$="-img-link"]')
+      .click();
+  }
+
+  async assertItemButtonIsRemove(name: string) {
+    const item = this.page
+      .locator('[data-test="inventory-item"]')
+      .filter({ hasText: name });
+    await expect(item.getByRole("button", { name: "Remove" })).toBeVisible();
+  }
+
   async sortByLowToHigh() {
     await this.page
       .locator('[data-test="product-sort-container"]')
