@@ -17,7 +17,7 @@ EXPLICIT-INVOCATION ONLY.
 For any partial flow (just planning, just ideation, just one spec), use the
 individual `gt-*` skills instead of this orchestrator.
 
-Run full Pipeline A: planner → ideation → per-scenario (test case + spec + refactor) → ship.
+Run full Pipeline A: planner → ideation → batch TC generation → per-scenario (spec + refactor) → ship.
 
 ## Pipeline schema
 
@@ -107,39 +107,47 @@ JSON block and drop all full phase output from active context. This is mandatory
 | gt-story-planner (1) | `us_id`, `title`, `scenario_count` |
 | gt-test-ideation (2) | `total_ideas`, `scenario_count` |
 | gt-test-case-generator (3a) | `tc_id`, `scenario_index`, `title`, `deduped` |
-| gt-spec-writer (3b) | `status`, `spec_path`, `tc_id`, `last_error` |
-| gt-refactor-tests (3c) | `fixes_applied`, `spec_path` |
+| gt-spec-writer (4b) | `status`, `spec_path`, `tc_id`, `last_error` |
+| gt-refactor-tests (4c) | `fixes_applied`, `spec_path` |
 
 All other data (ideation arrays, tracker API responses, full error stacks)
 remains in artifact files on disk — access by path if needed. Omitting
 compaction on long runs causes context overflow — this rule is non-negotiable.
 
-### Phase 3 — Per-scenario loop
+### Phase 3 — Batch TC generation (`gt-test-case-generator`)
 
-For each non-SKIP scenario in `scenarios.md`:
-
-#### Phase 3a — Test case (`gt-test-case-generator`)
-
-Invoke with `test-ideas.json` and the current `scenario_index`.
+For every non-SKIP scenario in `scenarios.md`, invoke `gt-test-case-generator` with `test-ideas.json` and the `scenario_index`.
 
 - Resume: if `tc-{index}.json` already exists, skip and continue
-- **SUCCESS:** `tc-{index}.json` written
+- **SUCCESS:** `tc-{index}.json` written for every non-SKIP scenario
 
-#### Phase 3b — Spec (`gt-spec-writer`)
+All `tc-*.json` files must be produced before Phase 4 begins.
+
+Show checkpoint: `✓ Test cases generated: N / M scenarios`
+
+### Phase 4 — Per-scenario spec loop
+
+For each non-SKIP scenario in `scenarios.md` (starting at index 0):
+
+#### Phase 4b — Spec (`gt-spec-writer`)
 
 Invoke with `tc-{index}.json`.
 
 - Resume: if `spec-{index}.json` already exists, skip and continue
-- **SUCCESS, passing:** continue to 3c
+- **SUCCESS, passing:** continue to 4c
 - **SUCCESS, failing:** route to `ft-bug-reporter` only (not full Pipeline B); record as `[BUG_REPORTED]` in summary
 
-#### Phase 3c — Refactor (`gt-refactor-tests`) — passing specs only
+#### Phase 4b-bug — Bug report (`ft-bug-reporter`) — failing specs only
+
+Invoke with `spec-{index}.json` and `tc-{index}.json`.
+
+#### Phase 4c — Refactor (`gt-refactor-tests`) — passing specs only
 
 Invoke in Validation Mode on the new spec file.
 
 Record outcome in the per-scenario status.
 
-### Phase 4 — Final summary
+### Phase 5 — Final summary
 
 Output a table:
 
@@ -156,7 +164,7 @@ Total: 4 scenarios | 2 passing | 1 failing (bug reported) | 1 skipped
 Ship: PR https://github.com/org/repo/pull/42  (or "skipped — no passing specs")
 ```
 
-### Phase 5 — Ship (`gf-ship`)
+### Phase 6 — Ship (`gf-ship`)
 
 **Precondition:** at least one `spec-{index}.json` exists with `status: "passing"`.
 
@@ -194,8 +202,8 @@ and stop — do not invoke `gf-ship`.
 - `gt-refactor-tests` in pipeline mode: apply all **MUST FIX** items automatically; apply clear-cut **CAN FIX** items (naming, fixture consolidation, locator hygiene with existing page object coverage) without asking; skip subjective or high-risk CAN FIX items; never apply SKIP items.
 - Bug reporting for a failing spec proceeds without confirmation.
 - `gf-ship` at Phase 5 proceeds without confirmation when the precondition is met.
-- If a non-critical phase fails (any Phase 3a/3b/3c/3b-bug iteration), log the failure in the scenario row and continue to the next scenario — do not abort the entire pipeline.
-- Phases 0, 1, 2, and 5 use `on_failure: stop` — a failure there aborts everything.
+- If a non-critical phase fails (any Phase 3a / Phase 4b/4c/4b-bug iteration), log the failure in the scenario row and continue to the next scenario — do not abort the entire pipeline.
+- Phases 0, 1, 2, and 6 use `on_failure: stop` — a failure there aborts everything.
 
 **Artifact contracts:**
 - Generate a `run_id` at start and use it consistently for all artifacts.

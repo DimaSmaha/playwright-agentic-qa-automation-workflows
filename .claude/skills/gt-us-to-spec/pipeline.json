@@ -1,6 +1,6 @@
 {
   "pipeline": "gt-us-to-spec",
-  "description": "Pipeline A: User Story → Playwright spec — plan → ideate → per-scenario loop → ship",
+  "description": "Pipeline A: User Story → Playwright spec — plan → ideate → batch TC generation → per-scenario spec loop → ship",
   "run_id_prefix": "gt",
   "artifact_root": ".workflow-artifacts/{run_id}",
   "phases": [
@@ -33,7 +33,7 @@
     },
     {
       "id": "phase-3",
-      "label": "Per-Scenario Loop",
+      "label": "Batch TC Generation",
       "skill": null,
       "reads": ["test-ideas.json"],
       "writes": [],
@@ -51,9 +51,24 @@
             "writes": ["tc-{index}.json"],
             "resume_skip_if": "tc-{index}.json",
             "on_failure": "log-and-continue-next-scenario"
-          },
+          }
+        ]
+      }
+    },
+    {
+      "id": "phase-4",
+      "label": "Per-Scenario Spec Loop",
+      "skill": null,
+      "reads": ["tc-*.json"],
+      "writes": [],
+      "on_failure": "log-and-continue",
+      "loop": {
+        "type": "for-each-scenario",
+        "source": "scenarios.md",
+        "skip_if_marked": "[SKIP]",
+        "iteration_phases": [
           {
-            "id": "phase-3b",
+            "id": "phase-4b",
             "label": "Spec Writer",
             "skill": "gt-spec-writer",
             "reads": ["tc-{index}.json"],
@@ -61,12 +76,12 @@
             "resume_skip_if": "spec-{index}.json",
             "on_failure": "log-and-continue-next-scenario",
             "routing": {
-              "on_status_passing": "phase-3c",
-              "on_status_failing": "phase-3b-bug"
+              "on_status_passing": "phase-4c",
+              "on_status_failing": "phase-4b-bug"
             }
           },
           {
-            "id": "phase-3b-bug",
+            "id": "phase-4b-bug",
             "label": "Bug Report (failing spec)",
             "skill": "ft-bug-reporter",
             "reads": ["spec-{index}.json", "tc-{index}.json"],
@@ -75,7 +90,7 @@
             "on_failure": "log-and-continue-next-scenario"
           },
           {
-            "id": "phase-3c",
+            "id": "phase-4c",
             "label": "Refactor",
             "skill": "gt-refactor-tests",
             "reads": ["spec-{index}.json"],
@@ -88,7 +103,7 @@
       }
     },
     {
-      "id": "phase-4",
+      "id": "phase-5",
       "label": "Summary",
       "skill": null,
       "reads": ["spec-*.json"],
@@ -97,7 +112,7 @@
       "action": "emit final summary table"
     },
     {
-      "id": "phase-5",
+      "id": "phase-6",
       "label": "Ship",
       "skill": "gf-ship",
       "reads": ["us.json", "spec-*.json"],
@@ -122,8 +137,8 @@
       "phase-1": { "retain": ["us_id", "title", "scenario_count"] },
       "phase-2": { "retain": ["total_ideas", "scenario_count"] },
       "phase-3a": { "retain": ["tc_id", "scenario_index", "title", "deduped"] },
-      "phase-3b": { "retain": ["status", "spec_path", "tc_id", "last_error"] },
-      "phase-3c": { "retain": ["fixes_applied", "spec_path"] }
+      "phase-4b": { "retain": ["status", "spec_path", "tc_id", "last_error"] },
+      "phase-4c": { "retain": ["fixes_applied", "spec_path"] }
     }
   }
 }
