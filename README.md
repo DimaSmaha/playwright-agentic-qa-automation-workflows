@@ -84,7 +84,31 @@ Converts a tracker user story into runnable, refactored Playwright specs and shi
 ### Stage flow
 
 ```
-gt-story-planner → gt-test-ideation → gt-test-case-generator → gt-spec-writer → gt-refactor-tests → gf-ship
+ User Story (ID or text)
+        │
+        ▼
+┌─────────────────┐   us.json        ┌──────────────────┐   test-ideas.json   ┌──────────────────────┐
+│ gt-story-planner│ ──────────────►  │ gt-test-ideation │ ──────────────────► │ gt-test-case-generator│
+│                 │   scenarios.md   │                  │                     │                      │
+└─────────────────┘                  └──────────────────┘                     └──────────┬───────────┘
+                                                                                          │ tc-N.json
+                                                                                          ▼
+                                                                               ┌──────────────────┐
+                                                                               │  gt-spec-writer  │
+                                                                               └────────┬─────────┘
+                                                                                        │
+                                                              ┌─────── spec passing ────┤
+                                                              │                         │
+                                                              │                spec failing
+                                                              ▼                         ▼
+                                                   ┌──────────────────┐    ┌────────────────────┐
+                                                   │ gt-refactor-tests│    │  ft-bug-reporter   │
+                                                   └────────┬─────────┘    └────────────────────┘
+                                                            │ cleaned spec
+                                                            ▼
+                                                   ┌────────────────┐
+                                                   │    gf-ship     │──► PR on GitHub
+                                                   └────────────────┘
 ```
 
 ### Stage-by-stage reference
@@ -92,6 +116,12 @@ gt-story-planner → gt-test-ideation → gt-test-case-generator → gt-spec-wri
 #### 1. `gt-story-planner`
 
 Fetches or synthesizes the user story, explores the live app with `playwright-cli`, checks for already-covered scenarios, and designs a scenario list with exploratory charters.
+
+```
+ --us-id <id>  ──► tracker fetch ──► us.json ──┐
+                                                ├──► playwright-cli explore ──► scenarios.md
+ --us-text "…" ──► synthesize ──────► us.json ──┘
+```
 
 **Inputs:** `--us-id <id>` or `--us-text "<story>"`
 
@@ -138,6 +168,14 @@ Fetches or synthesizes the user story, explores the live app with `playwright-cl
 
 Expands each scenario into a structured ideation unit with conditions, ordered steps, verifications, navigations, and page object helper references. Enforces `ideas.length === verifications.length`.
 
+```
+ us.json ──────────────┐
+                        ├──► [for each non-SKIP scenario] ──► ideation unit ──► test-ideas.json
+ scenarios.md ─────────┘                                            │
+                                                          (ideas.length must ==
+                                                           verifications.length)
+```
+
 **Inputs:** `us.json`, `scenarios.md`
 
 **Artifact out:**
@@ -176,6 +214,14 @@ Also writes `test-ideas.md` as a human-readable version.
 
 Converts each ideation unit into a tracker test case using deterministic shell scripts. Copies ideas and verifications verbatim — no LLM rewriting. Resume-safe: skips if `tc-N.json` already exists.
 
+```
+ test-ideas.json ──► [scenario N] ──► generate-tc.sh ──► tracker create ──► tc-N.json
+                                              │                                    │
+                                              └──► tc-steps-N.md                  │
+                                              └──► tc-steps-N.xml        tc-N.json already exists?
+                                                                               └──► skip (resume-safe)
+```
+
 **Inputs:** `test-ideas.json`, `scenario_index` (0-based, or `"all"`)
 
 **Artifact out:**
@@ -205,6 +251,21 @@ Also writes `tc-steps-N.md` (human-readable step table) and `tc-steps-N.xml`.
 #### 4. `gt-spec-writer`
 
 Reads page objects and existing spec files, writes a runnable Playwright spec using the project fixture pattern, executes it, and emits a pass/fail result artifact.
+
+```
+ tc-N.json ──► read page objects ──► write .spec.ts ──► npx playwright test
+                      │                                          │
+                      └── if locators missing: playwright-cli   │
+                                                         ┌──────┴──────┐
+                                                       pass           fail
+                                                         │              │
+                                                         ▼              ▼
+                                                    spec-N.json    spec-N.json
+                                                   (passing)       (failing)
+                                                         │              │
+                                                         ▼              ▼
+                                              gt-refactor-tests   ft-bug-reporter
+```
 
 **Inputs:** `tc-N.json`
 
@@ -306,7 +367,30 @@ Reproduces a failing spec, classifies the root cause, and either fixes the test 
 ### Stage flow
 
 ```
-ft-repro → ft-classifier → ft-test-fix-runner (test-bug) | ft-bug-reporter (app-bug)
+ failing.spec.ts
+        │
+        ▼
+┌───────────────┐  repro.json + trace/png/webm   ┌──────────────────┐  classification.json
+│   ft-repro    │ ──────────────────────────────► │  ft-classifier   │ ──────────────┐
+└───────────────┘                                 └──────────────────┘               │
+                                                                                      │
+                                    ┌─────────────────────────────────────────────────┤
+                                    │                                                 │
+                            verdict: test-bug ≥0.55                         verdict: app-bug ≥0.60
+                                    │                                                 │
+                                    ▼                                                 ▼
+                         ┌─────────────────────┐                         ┌──────────────────────┐
+                         │ ft-test-fix-runner  │                         │   ft-bug-reporter    │
+                         └──────────┬──────────┘                         └──────────┬───────────┘
+                                    │ fix.json (success)                             │ bug.json
+                                    ▼                                                ▼
+                         ┌─────────────────────┐                          tracker issue + URL
+                         │      gf-ship        │──► PR on GitHub
+                         └─────────────────────┘
+
+                         verdict: flaky ≥0.45  ──► report only (no code change)
+                         verdict: infra ≥0.65  ──► report only (no code change)
+                         verdict: needs-human   ──► stop; human decision required
 ```
 
 ### Stage-by-stage reference
@@ -314,6 +398,22 @@ ft-repro → ft-classifier → ft-test-fix-runner (test-bug) | ft-bug-reporter (
 #### 1. `ft-repro`
 
 Re-runs the failing spec with the JSON reporter, collects trace/screenshot/video evidence, and extracts failure signals.
+
+```
+ failing.spec.ts ──► npx playwright test --reporter=json ──► pw-output.json
+                                                                     │
+                             ┌───────────────────────────────────────┤
+                             │                                       │
+                     parse error signals                   copy artifacts
+                             │                                       │
+                      (error, stack,                     trace.zip / fail.png
+                     locator, expected,                      / video.webm
+                       actual fields)                            │
+                             └───────────────────────────────────┘
+                                                │
+                                                ▼
+                                           repro.json
+```
 
 **Inputs:** spec path (e.g. `tests/checkout/critical-checkout-validation-fail.spec.ts`)
 
@@ -342,6 +442,24 @@ Re-runs the failing spec with the JSON reporter, collects trace/screenshot/video
 #### 2. `ft-classifier`
 
 Scores signals from `repro.json` against a weighted rule table. For ambiguous cases, uses `playwright-cli` to inspect the live app and confirm whether the element exists. Emits a single verdict with confidence.
+
+```
+ repro.json (error + stack + locator)
+        │
+        ▼
+ score signals ──► highest total wins
+        │
+        ├─ ambiguous / app-bug 0.40–0.75? ──► playwright-cli live app check ──► adjust weights
+        │
+        ▼
+ apply confidence threshold
+        │
+        ├─ test-bug ≥ 0.55  ──► classification.json { verdict: "test-bug" }
+        ├─ app-bug  ≥ 0.60  ──► classification.json { verdict: "app-bug"  }
+        ├─ flaky    ≥ 0.45  ──► classification.json { verdict: "flaky"    }
+        ├─ infra    ≥ 0.65  ──► classification.json { verdict: "infra"    }
+        └─ below threshold  ──► classification.json { verdict: "needs-human" }
+```
 
 **Signal scoring table:**
 
@@ -392,6 +510,23 @@ Scores signals from `repro.json` against a weighted rule table. For ambiguous ca
 
 Applies a targeted, test-only fix based on the classified signal type. Uses `playwright-cli` to find a stable locator or verify the expected value against the live app. Verifies the fix passes before writing the result. Never touches application source code.
 
+```
+ classification.json { verdict: "test-bug", confidence ≥ 0.55 }
+         │
+         ▼
+ determine fix strategy ──► playwright-cli (inspect live app / find stable locator)
+         │
+         ▼
+ apply minimal change to .spec.ts (test code only — never app code)
+         │
+         ▼
+ npx playwright test <spec> --project=chromium
+         │
+         ├─ passes ──► fix.json { verdict: "success" } ──► ft-orchestrator calls gf-ship ──► PR
+         │
+         └─ still failing ──► fix.json { verdict: "needs-human" } ──► stop
+```
+
 **Fix strategies by signal:**
 
 | Signal | Strategy |
@@ -431,6 +566,25 @@ After `fix.json` with `verdict: "success"`, the orchestrator calls `gf-ship` to 
 #### 3B. `ft-bug-reporter` (app-bug path)
 
 Verifies the regression is still present in the live app, builds a structured bug description with evidence links, creates the bug in the tracker, and emits `bug.json`.
+
+```
+ classification.json { verdict: "app-bug", confidence ≥ 0.60 }
+         │
+         ├──► playwright-cli: verify regression still present in live app
+         │
+         ▼
+ build bug-desc.md
+   ├── error summary (from classification.json)
+   ├── stack trace (from repro.json)
+   ├── signals + weights (from classification.json)
+   └── evidence paths (trace.zip / fail.png / video.webm)
+         │
+         ▼
+ create.sh ──► tracker API (up to 3 retries) ──► bug ID + URL
+         │
+         ▼
+ bug.json { id, url, severity, deduped, evidence_paths }
+```
 
 **Severity mapping:**
 - `confidence >= 0.70` → `critical`
@@ -504,6 +658,11 @@ Use individual skills when you need a specific stage only — do not invoke the 
 
 ### Git workflow skills
 
+```
+ /gf-branch ──► /gf-commit ──► /gf-push ──► /gf-pr
+      └──────────────────────────────────────────────────── /gf-ship (all-in-one)
+```
+
 | Skill | Purpose |
 |---|---|
 | `/gf-branch` | Create feature branch from main |
@@ -554,6 +713,63 @@ Both orchestrators (`/gt-us-to-spec`, `/ft-orchestrator`) are fully autonomous:
 ## Workflow artifacts
 
 `.workflow-artifacts/` is gitignored. Each pipeline run creates a timestamped subdirectory:
+
+### Pipeline A handoff chain
+
+```
+gt-story-planner
+  └──► us.json ──────────────────────────────────────────────────────────────────┐
+  └──► scenarios.md ──────────────────────────────────────────────────────────┐  │
+                                                                              │  │
+gt-test-ideation (reads us.json + scenarios.md)                              │  │
+  └──► test-ideas.json ────────────────────────────────────────────────────┐ │  │
+  └──► test-ideas.md (human review)                                        │ │  │
+                                                                           │ │  │
+gt-test-case-generator (reads test-ideas.json[N])                          │ │  │
+  └──► tc-N.json ──────────────────────────────────────────────────────┐  │ │  │
+  └──► tc-steps-N.md / tc-steps-N.xml (human review)                  │  │ │  │
+                                                                       │  │ │  │
+gt-spec-writer (reads tc-N.json)                                       │  │ │  │
+  └──► tests/<domain>/<name>.spec.ts ──────────────────────────────┐  │  │ │  │
+  └──► spec-N.json { status: passing|failing }                     │  │  │ │  │
+                                                                   │  │  │ │  │
+gt-refactor-tests (reads spec file)                                │  │  │ │  │
+  └──► cleaned .spec.ts ───────────────────────────────────────────┘  │  │ │  │
+                                                                       │  │ │  │
+gf-ship (reads all passing spec paths + us.json.id)                   │  │ │  │
+  └──► git branch / commit / push / PR on GitHub                       │  │ │  │
+                                                                       │  │ │  │
+ft-bug-reporter (reads spec-N.json failing + tc-N.json) ───────────────┘  │ │  │
+  └──► bug.json + tracker issue                                            │ │  │
+                                                                           │ │  │
+All downstream skills read from .workflow-artifacts/{run_id}/ ─────────────┘─┘──┘
+```
+
+### Pipeline B handoff chain
+
+```
+ft-repro (spec path)
+  └──► repro.json ──────────────────────────────────────────────────────────────┐
+  └──► trace.zip / fail.png / video.webm                                        │
+                                                                                 │
+ft-classifier (reads repro.json)                                                 │
+  └──► classification.json { verdict, confidence, signals } ──────┐             │
+                                                                   │             │
+ft-test-fix-runner (reads classification.json + repro.json) ◄──── test-bug      │
+  └──► .spec.ts (patched)                                          │             │
+  └──► fix.json { verdict: success|needs-human } ──────────────┐  │             │
+                                                               │  │             │
+gf-ship (reads fix.json)                                       │  │             │
+  └──► PR on GitHub (ft-orchestrator adds pr_url to fix.json)  │  │             │
+                                                               │  │             │
+ft-bug-reporter (reads classification.json + repro.json) ◄──── app-bug          │
+  └──► bug-desc.md (intermediate)                              │                 │
+  └──► bug.json { id, url, severity, deduped } ────────────────┘                 │
+                                                                                 │
+All artifacts stored in .workflow-artifacts/{run_id}/ ───────────────────────────┘
+```
+
+### File reference table
 
 | File | Written by | Read by |
 |---|---|---|
