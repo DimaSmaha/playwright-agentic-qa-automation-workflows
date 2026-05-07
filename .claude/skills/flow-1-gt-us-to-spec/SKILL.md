@@ -1,5 +1,5 @@
 ---
-name: gt-us-to-spec
+name: flow-1-gt-us-to-spec
 description: >
   EXPLICIT-INVOCATION ONLY. Orchestrator for Pipeline A (User Story → Automated
   Test). Use only when the caller explicitly requests a full end-to-end flow from
@@ -8,12 +8,12 @@ description: >
 ---
 
 > **[DEPRECATED]** This orchestrator is superseded by two focused sub-orchestrators:
-> - `gt-us-to-tc` — User Story → Test Cases (plan, ideate, generate TCs, link to story)
-> - `gt-tc-to-spec` — Test Cases → Playwright Specs (fetch TCs, write specs, refactor, ship)
+> - `flow-1a-gt-us-to-tc` — User Story → Test Cases (plan, ideate, generate TCs, link to story)
+> - `flow-1b-gt-tc-to-spec` — Test Cases → Playwright Specs (fetch TCs, write specs, refactor, ship)
 >
-> `gt-us-to-spec` is retained for reference. For new runs, prefer the sub-orchestrators.
+> `flow-1-gt-us-to-spec` is retained for reference. For new runs, prefer the sub-orchestrators.
 
-# gt-us-to-spec
+# flow-1-gt-us-to-spec
 
 EXPLICIT-INVOCATION ONLY.
 
@@ -27,7 +27,7 @@ Run full Pipeline A: planner → ideation → batch TC generation → per-scenar
 
 ## Pipeline schema
 
-On start, read `.claude/skills/gt-us-to-spec/pipeline.json`.
+On start, read `.claude/skills/flow-1-gt-us-to-spec/pipeline.json`.
 This file is the authoritative definition of all phases, loop structure,
 artifact contracts, resume-skip conditions, and compaction fields.
 Use it as the execution manifest throughout.
@@ -52,14 +52,14 @@ Either:
 - `--us-id <id>` — fetch from tracker
 - `--us-text "<title + description>"` — paste directly
 
-If neither provided, stop immediately and report: "gt-us-to-spec requires --us-id or --us-text. Invoke with one of these inputs."
+If neither provided, stop immediately and report: "flow-1-gt-us-to-spec requires --us-id or --us-text. Invoke with one of these inputs."
 
 ## Workflow
 
 ### Phase 0 — Initialize
 
 ```bash
-run_id="$(bash .claude/skills/gt-us-to-spec/scripts/init.sh)"
+run_id="$(bash .claude/skills/flow-1-gt-us-to-spec/scripts/init.sh)"
 ```
 
 Confirm ISSUE_TRACKER and FAKE_TRACKER_URL (or other tracker vars) are set. If missing, stop and report exactly which vars are absent — do not ask interactively.

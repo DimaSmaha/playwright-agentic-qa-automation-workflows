@@ -1,5 +1,5 @@
 {
-  "pipeline": "ft-orchestrator",
+  "pipeline": "flow-2-ft-failed-test-analysis",
   "description": "Pipeline B: Playwright failure triage — repro → classify → fix or report → ship",
   "run_id_prefix": "ft",
   "artifact_root": ".workflow-artifacts/{run_id}",

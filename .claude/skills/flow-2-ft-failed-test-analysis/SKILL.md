@@ -1,5 +1,5 @@
 ---
-name: ft-orchestrator
+name: flow-2-ft-failed-test-analysis
 description: >
   EXPLICIT-INVOCATION ONLY. Single-flow orchestrator for the full ft Pipeline B
   chain. Use when the user wants one end-to-end failure triage run from failing
@@ -7,7 +7,7 @@ description: >
   report). For any partial flow, use the individual ft-* or gf-* skills instead.
 ---
 
-# ft-orchestrator
+# flow-2-ft-failed-test-analysis
 
 EXPLICIT-INVOCATION ONLY.
 
@@ -19,7 +19,7 @@ as sequential phases with deterministic artifact handoffs.
 
 ## Pipeline schema
 
-On start, read `.claude/skills/ft-orchestrator/pipeline.json`.
+On start, read `.claude/skills/flow-2-ft-failed-test-analysis/pipeline.json`.
 This file is the authoritative definition of all phases, artifact contracts,
 routing conditions, resume-skip rules, and compaction fields.
 Use it as the execution manifest — do not deviate from phase order or artifact
@@ -52,7 +52,7 @@ If tracker or GitHub token vars are missing, stop and report exactly which vars 
 ### Phase 0 — Initialize
 
 ```bash
-run_id=$(bash .claude/skills/ft-orchestrator/scripts/init-run.sh)
+run_id=$(bash .claude/skills/flow-2-ft-failed-test-analysis/scripts/init-run.sh)
 ```
 
 Confirm the spec path exists. If not provided, stop and report the missing argument — do not ask interactively.

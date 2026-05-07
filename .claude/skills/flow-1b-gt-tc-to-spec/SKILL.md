@@ -1,13 +1,13 @@
 ---
-name: gt-tc-to-spec
+name: flow-1b-gt-tc-to-spec
 description: >
   EXPLICIT-INVOCATION ONLY. Sub-orchestrator for Pipeline A-2 (Test Cases → Playwright Specs).
   Use when the caller explicitly requests spec generation from existing tracker test cases.
-  Fetches TCs linked to a user story (from a prior gt-us-to-tc run or directly from the tracker),
-  then runs per-TC spec writing, refactor, and ship. For the full end-to-end flow, use gt-us-to-spec.
+  Fetches TCs linked to a user story (from a prior flow-1a-gt-us-to-tc run or directly from the tracker),
+  then runs per-TC spec writing, refactor, and ship. For the full end-to-end flow, use flow-1-gt-us-to-spec.
 ---
 
-# gt-tc-to-spec
+# flow-1b-gt-tc-to-spec
 
 EXPLICIT-INVOCATION ONLY.
 
@@ -18,7 +18,7 @@ Run Pipeline A-2: fetch TCs → per-TC (spec + refactor) → ship.
 
 ## Pipeline schema
 
-On start, read `.claude/skills/gt-tc-to-spec/pipeline.json`.
+On start, read `.claude/skills/flow-1b-gt-tc-to-spec/pipeline.json`.
 This file is the authoritative definition of all phases, loop structure,
 artifact contracts, resume-skip conditions, and compaction fields.
 Use it as the execution manifest throughout.
@@ -29,23 +29,23 @@ Use it for requests like:
 
 - "generate specs from the test cases for story 112"
 - "run the second half of Pipeline A — spec writing only"
-- "write Playwright specs from an existing gt-us-to-tc run"
+- "write Playwright specs from an existing flow-1a-gt-us-to-tc run"
 - "tc-to-spec for run gtc-20240601-143012"
 
 Do **not** use it for:
 
-- generating test cases from a user story (use `gt-us-to-tc`)
-- full end-to-end pipeline (use `gt-us-to-spec`)
+- generating test cases from a user story (use `flow-1a-gt-us-to-tc`)
+- full end-to-end pipeline (use `flow-1-gt-us-to-spec`)
 - writing one spec (use `gt-spec-writer`)
 
 ## Inputs
 
 One of:
 
-- `--run-id <gtc-run-id>` — reuse `us.json` and `tc-*.json` from an existing `gt-us-to-tc` run
+- `--run-id <gtc-run-id>` — reuse `us.json` and `tc-*.json` from an existing `flow-1a-gt-us-to-tc` run
 - `--us-id <id>` — fetch the user story from the tracker, then query for linked test cases
 
-If neither is provided, stop immediately and report: "gt-tc-to-spec requires --run-id or --us-id. Invoke with one of these inputs."
+If neither is provided, stop immediately and report: "flow-1b-gt-tc-to-spec requires --run-id or --us-id. Invoke with one of these inputs."
 
 ## Workflow
 

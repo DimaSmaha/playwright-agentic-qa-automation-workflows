@@ -1,13 +1,13 @@
 ---
-name: gt-us-to-tc
+name: flow-1a-gt-us-to-tc
 description: >
   EXPLICIT-INVOCATION ONLY. Sub-orchestrator for Pipeline A-1 (User Story → Test Cases).
   Use when the caller explicitly requests a flow from user story to tracker-backed test cases.
   Runs plan → ideate → batch TC generation → link TCs to story. For spec generation from
-  existing test cases, use gt-tc-to-spec instead.
+  existing test cases, use flow-1b-gt-tc-to-spec instead.
 ---
 
-# gt-us-to-tc
+# flow-1a-gt-us-to-tc
 
 EXPLICIT-INVOCATION ONLY.
 
@@ -18,7 +18,7 @@ Run Pipeline A-1: planner → ideation → batch TC generation → link TCs to s
 
 ## Pipeline schema
 
-On start, read `.claude/skills/gt-us-to-tc/pipeline.json`.
+On start, read `.claude/skills/flow-1a-gt-us-to-tc/pipeline.json`.
 This file is the authoritative definition of all phases, loop structure,
 artifact contracts, resume-skip conditions, and compaction fields.
 Use it as the execution manifest throughout.
@@ -34,7 +34,7 @@ Use it for requests like:
 
 Do **not** use it for:
 
-- generating Playwright specs (use `gt-tc-to-spec` or `gt-us-to-spec`)
+- generating Playwright specs (use `flow-1b-gt-tc-to-spec` or `flow-1-gt-us-to-spec`)
 - generating scenarios only (use `gt-story-planner`)
 - creating one test case (use `gt-test-case-generator`)
 
@@ -44,7 +44,7 @@ Either:
 - `--us-id <id>` — fetch from tracker
 - `--us-text "<title + description>"` — paste directly
 
-If neither provided, stop immediately and report: "gt-us-to-tc requires --us-id or --us-text. Invoke with one of these inputs."
+If neither provided, stop immediately and report: "flow-1a-gt-us-to-tc requires --us-id or --us-text. Invoke with one of these inputs."
 
 ## Workflow
 
@@ -167,7 +167,7 @@ Output a table:
 
 Run ID: gtc-20240601-143012
 Total: 3 scenarios | 2 TCs created | 2 linked to story {us_id} | 1 skipped
-Next: run gt-tc-to-spec --run-id gtc-20240601-143012 to generate Playwright specs
+Next: run flow-1b-gt-tc-to-spec --run-id gtc-20240601-143012 to generate Playwright specs
 ```
 
 ## Hard rules

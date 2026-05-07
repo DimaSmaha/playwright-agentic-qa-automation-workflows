@@ -33,12 +33,12 @@ Skills source `.env` automatically via `_common.sh`. The fake tracker server mus
 
 ### Two agentic pipelines
 
-**Pipeline A — User Story → Automated Spec** (invoked with `/gt-us-to-spec`):
+**Pipeline A — User Story → Automated Spec** (invoked with `/flow-1-gt-us-to-spec`):
 ```
 gt-story-planner → gt-test-ideation → gt-test-case-generator → gt-spec-writer → gt-refactor-tests → gf-ship
 ```
 
-**Pipeline B — Test Failure Triage** (invoked with `/ft-orchestrator`):
+**Pipeline B — Test Failure Triage** (invoked with `/flow-2-ft-failed-test-analysis`):
 ```
 ft-repro → ft-classifier → [ft-test-fix-runner | ft-bug-reporter]
 ```
@@ -49,13 +49,13 @@ ft-repro → ft-classifier → [ft-test-fix-runner | ft-bug-reporter]
 
 ```bash
 # Pipeline A — from tracker story
-/gt-us-to-spec --us-id 112
+/flow-1-gt-us-to-spec --us-id 112
 
 # Pipeline A — from pasted story text
-/gt-us-to-spec --us-text "As a user I want to log in..."
+/flow-1-gt-us-to-spec --us-text "As a user I want to log in..."
 
 # Pipeline B
-/ft-orchestrator tests/checkout/critical-checkout-validation-fail.spec.ts
+/flow-2-ft-failed-test-analysis tests/checkout/critical-checkout-validation-fail.spec.ts
 ```
 
 ### Artifact contracts (Pipeline A)
@@ -186,7 +186,7 @@ Routing thresholds: `test-bug ≥ 0.55` → `ft-test-fix-runner`; `app-bug ≥ 0
   "classification_source": "ft-classifier"
 }
 ```
-`ft-orchestrator` appends `pr_url` and `branch_name` after `gf-ship` completes.
+`flow-2-ft-failed-test-analysis` appends `pr_url` and `branch_name` after `gf-ship` completes.
 
 **`bug.json`** — written by `ft-bug-reporter`
 ```json
@@ -249,7 +249,7 @@ Skills live in `.claude/skills/` (invocable via `/skill-name`). Each skill has a
 
 Additional reference skills in `.agents/skills/`: `playwright-best-practices`, `playwright-test-improver`, `decomposition-coverage`, `decomposition-maintenance`, `userstory-to-testcase`.
 
-**Explicit-invocation-only skills** (never auto-triggered): `gt-us-to-spec`, `ft-orchestrator`, `gf-ship`.
+**Explicit-invocation-only skills** (never auto-triggered): `flow-1-gt-us-to-spec`, `flow-1a-gt-us-to-tc`, `flow-1b-gt-tc-to-spec`, `flow-2-ft-failed-test-analysis`, `gf-ship`.
 
 **Hard constraints shared by all skills:**
 - Use `npx` (not `pnpm`) for Playwright commands

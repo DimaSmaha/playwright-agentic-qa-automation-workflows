@@ -1,5 +1,5 @@
 {
-  "pipeline": "gt-tc-to-spec",
+  "pipeline": "flow-1b-gt-tc-to-spec",
   "description": "Pipeline A-2: Test Cases → Playwright spec — fetch TCs → per-TC spec loop → ship",
   "run_id_prefix": "gts",
   "artifact_root": ".workflow-artifacts/{run_id}",

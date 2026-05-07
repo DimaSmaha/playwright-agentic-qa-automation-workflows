@@ -1,5 +1,5 @@
 {
-  "pipeline": "gt-us-to-tc",
+  "pipeline": "flow-1a-gt-us-to-tc",
   "description": "Pipeline A-1: User Story → Test Cases — plan → ideate → batch TC generation → link to story",
   "run_id_prefix": "gtc",
   "artifact_root": ".workflow-artifacts/{run_id}",

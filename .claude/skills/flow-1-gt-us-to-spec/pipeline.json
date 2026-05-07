@@ -1,5 +1,5 @@
 {
-  "pipeline": "gt-us-to-spec",
+  "pipeline": "flow-1-gt-us-to-spec",
   "description": "Pipeline A: User Story → Playwright spec — plan → ideate → batch TC generation → per-scenario spec loop → ship",
   "run_id_prefix": "gt",
   "artifact_root": ".workflow-artifacts/{run_id}",
