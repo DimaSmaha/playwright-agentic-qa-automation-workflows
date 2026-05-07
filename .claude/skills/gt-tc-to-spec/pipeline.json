@@ -1,0 +1,108 @@
+{
+  "pipeline": "gt-tc-to-spec",
+  "description": "Pipeline A-2: Test Cases → Playwright spec — fetch TCs → per-TC spec loop → ship",
+  "run_id_prefix": "gts",
+  "artifact_root": ".workflow-artifacts/{run_id}",
+  "phases": [
+    {
+      "id": "phase-0",
+      "label": "Initialize",
+      "skill": null,
+      "reads": [],
+      "writes": [],
+      "on_failure": "stop",
+      "action": "generate run_id, mkdir artifact_root, validate inputs (--run-id or --us-id required)"
+    },
+    {
+      "id": "phase-1",
+      "label": "Fetch Test Cases",
+      "skill": null,
+      "reads": [],
+      "writes": ["us.json", "tc-*.json"],
+      "on_failure": "stop",
+      "action": "if --run-id: copy us.json and tc-*.json from source run into artifact_root; if --us-id: fetch story via get.sh then query tracker for linked TCs and reconstruct tc-*.json"
+    },
+    {
+      "id": "phase-2",
+      "label": "Per-TC Spec Loop",
+      "skill": null,
+      "reads": ["tc-*.json"],
+      "writes": [],
+      "on_failure": "log-and-continue",
+      "loop": {
+        "type": "for-each-tc",
+        "source": "tc-*.json",
+        "iteration_phases": [
+          {
+            "id": "phase-2b",
+            "label": "Spec Writer",
+            "skill": "gt-spec-writer",
+            "reads": ["tc-{index}.json"],
+            "writes": ["spec-{index}.json"],
+            "resume_skip_if": "spec-{index}.json",
+            "on_failure": "log-and-continue-next-tc",
+            "routing": {
+              "on_status_passing": "phase-2c",
+              "on_status_failing": "phase-2b-bug"
+            }
+          },
+          {
+            "id": "phase-2b-bug",
+            "label": "Bug Report (failing spec)",
+            "skill": "ft-bug-reporter",
+            "reads": ["spec-{index}.json", "tc-{index}.json"],
+            "writes": ["bug-{index}.json"],
+            "condition": "spec-{index}.json.status == 'failing'",
+            "on_failure": "log-and-continue-next-tc"
+          },
+          {
+            "id": "phase-2c",
+            "label": "Refactor",
+            "skill": "gt-refactor-tests",
+            "reads": ["spec-{index}.json"],
+            "writes": [],
+            "condition": "spec-{index}.json.status == 'passing'",
+            "pipeline_mode": true,
+            "on_failure": "log-and-continue-next-tc"
+          }
+        ]
+      }
+    },
+    {
+      "id": "phase-3",
+      "label": "Summary",
+      "skill": null,
+      "reads": ["spec-*.json"],
+      "writes": [],
+      "on_failure": "stop",
+      "action": "emit final summary table"
+    },
+    {
+      "id": "phase-4",
+      "label": "Ship",
+      "skill": "gf-ship",
+      "reads": ["us.json", "spec-*.json"],
+      "writes": [],
+      "condition": "at least one spec-*.json has status == 'passing'",
+      "on_condition_false": "warn-and-stop",
+      "on_failure": "stop",
+      "ship_params": {
+        "work_item_id_template": "gts-{us_id}",
+        "commit_type": "test",
+        "commit_scope": "specs",
+        "commit_subject_template": "add {passing_count} Playwright specs for story {us_id}",
+        "files_template": "{all_passing_spec_paths}",
+        "base": "${CORE_BRANCH:-master}"
+      }
+    }
+  ],
+  "compaction": {
+    "enabled": true,
+    "strategy": "emit-compact-block-then-drop",
+    "phases": {
+      "phase-1": { "retain": ["us_id", "title", "tc_count"] },
+      "phase-2b": { "retain": ["status", "spec_path", "tc_id", "last_error"] },
+      "phase-2c": { "retain": ["fixes_applied", "spec_path"] }
+    }
+  }
+}

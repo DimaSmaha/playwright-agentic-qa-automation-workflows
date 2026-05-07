@@ -7,6 +7,12 @@ description: >
   individual gt-* skills directly instead.
 ---
 
+> **[DEPRECATED]** This orchestrator is superseded by two focused sub-orchestrators:
+> - `gt-us-to-tc` — User Story → Test Cases (plan, ideate, generate TCs, link to story)
+> - `gt-tc-to-spec` — Test Cases → Playwright Specs (fetch TCs, write specs, refactor, ship)
+>
+> `gt-us-to-spec` is retained for reference. For new runs, prefer the sub-orchestrators.
+
 # gt-us-to-spec
 
 EXPLICIT-INVOCATION ONLY.
