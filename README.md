@@ -77,9 +77,17 @@ decomposition/        # Coverage tracking and planning
 
 ## Pipeline A — User Story → Automated Spec
 
-**Invoke:** `/gt-us-to-spec --us-id <id>` or `/gt-us-to-spec --us-text "<title + AC>"`
+Pipeline A is split into two independent sub-orchestrators:
 
-Converts a tracker user story into runnable, refactored Playwright specs and ships them via PR. Fully autonomous — never pauses for confirmation.
+| Sub-orchestrator | Invoke | What it does |
+|---|---|---|
+| `flow-1a-gt-us-to-tc` | `/flow-1a-gt-us-to-tc --us-id <id>` | Story → Test Cases: plan, ideate, generate TCs, link to tracker story |
+| `flow-1b-gt-tc-to-spec` | `/flow-1b-gt-tc-to-spec --run-id <gtc-id>` | Test Cases → Specs: fetch TCs, write specs, refactor, ship PR |
+| `flow-1b-gt-tc-to-spec` | `/flow-1b-gt-tc-to-spec --us-id <id>` | Same as above but fetches TCs from tracker directly |
+
+`/flow-1-gt-us-to-spec` *(deprecated)* — runs both stages end-to-end. Prefer the sub-orchestrators.
+
+All Pipeline A orchestrators are fully autonomous — never pause for confirmation.
 
 ### Stage flow
 
@@ -335,7 +343,11 @@ Creates a branch, commits all passing spec files, pushes, and opens a PR to `COR
 ### Pipeline A example run
 
 ```
-/gt-us-to-spec --us-id 112
+# Step 1 — generate and link test cases
+/flow-1a-gt-us-to-tc --us-id 112
+
+# Step 2 — write specs from the test cases and ship PR
+/flow-1b-gt-tc-to-spec --run-id gtc-20240601-143012
 ```
 
 ```
@@ -360,7 +372,7 @@ Ship: PR https://github.com/org/repo/pull/42
 
 ## Pipeline B — Test Failure Triage
 
-**Invoke:** `/ft-orchestrator tests/path/to/failing.spec.ts`
+**Invoke:** `/flow-2-ft-failed-test-analysis tests/path/to/failing.spec.ts`
 
 Reproduces a failing spec, classifies the root cause, and either fixes the test (PR) or files a bug in the tracker. Fully autonomous — never pauses for confirmation.
 
@@ -614,7 +626,7 @@ Verifies the regression is still present in the live app, builds a structured bu
 ### Pipeline B example run
 
 ```
-/ft-orchestrator tests/checkout/critical-checkout-validation-fail.spec.ts
+/flow-2-ft-failed-test-analysis tests/checkout/critical-checkout-validation-fail.spec.ts
 ```
 
 ```
@@ -703,7 +715,7 @@ Supported trackers: `fake` | `github` | `jira` | `ado` | `linear`
 
 ## Autonomy rules
 
-Both orchestrators (`/gt-us-to-spec`, `/ft-orchestrator`) are fully autonomous:
+All orchestrators (`/flow-1a-gt-us-to-tc`, `/flow-1b-gt-tc-to-spec`, `/flow-1-gt-us-to-spec`, `/flow-2-ft-failed-test-analysis`) are fully autonomous:
 - They never pause mid-run to ask the user for confirmation or clarification.
 - If a required input or env var is missing, the pipeline stops immediately and reports exactly what is absent.
 - Non-critical phase failures (individual scenario iterations) are logged and the pipeline continues — only Phase 0/1/2 failures abort everything.
@@ -760,7 +772,7 @@ ft-test-fix-runner (reads classification.json + repro.json) ◄──── test
   └──► fix.json { verdict: success|needs-human } ──────────────┐  │             │
                                                                │  │             │
 gf-ship (reads fix.json)                                       │  │             │
-  └──► PR on GitHub (ft-orchestrator adds pr_url to fix.json)  │  │             │
+  └──► PR on GitHub (flow-2-ft-failed-test-analysis adds pr_url to fix.json)  │  │             │
                                                                │  │             │
 ft-bug-reporter (reads classification.json + repro.json) ◄──── app-bug          │
   └──► bug-desc.md (intermediate)                              │                 │
@@ -779,9 +791,9 @@ All artifacts stored in .workflow-artifacts/{run_id}/ ────────�
 | `test-ideas.md` | `gt-test-ideation` | — (human review) |
 | `tc-N.json` | `gt-test-case-generator` | `gt-spec-writer` |
 | `tc-steps-N.md` | `gt-test-case-generator` | — (human review) |
-| `spec-N.json` | `gt-spec-writer` | `gt-us-to-spec` orchestrator |
+| `spec-N.json` | `gt-spec-writer` | `flow-1b-gt-tc-to-spec` orchestrator |
 | `repro.json` | `ft-repro` | `ft-classifier` |
 | `classification.json` | `ft-classifier` | `ft-test-fix-runner`, `ft-bug-reporter` |
-| `fix.json` | `ft-test-fix-runner` | `ft-orchestrator` (for gf-ship) |
+| `fix.json` | `ft-test-fix-runner` | `flow-2-ft-failed-test-analysis` (for gf-ship) |
 | `bug.json` | `ft-bug-reporter` | — (final artifact) |
 | `.tracker-cache.json` | `preflight.sh` | all tracker scripts |

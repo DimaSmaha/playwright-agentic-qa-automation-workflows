@@ -33,26 +33,33 @@ Skills source `.env` automatically via `_common.sh`. The fake tracker server mus
 
 ### Two agentic pipelines
 
-**Pipeline A — User Story → Automated Spec** (invoked with `/flow-1-gt-us-to-spec`):
-```
-gt-story-planner → gt-test-ideation → gt-test-case-generator → gt-spec-writer → gt-refactor-tests → gf-ship
-```
+**Pipeline A — User Story → Automated Spec** (two focused sub-orchestrators; full pipeline deprecated):
+
+- **`/flow-1a-gt-us-to-tc`** — Story → Test Cases: `gt-story-planner → gt-test-ideation → gt-test-case-generator → link TCs to story`
+- **`/flow-1b-gt-tc-to-spec`** — Test Cases → Specs: `fetch TCs → gt-spec-writer → gt-refactor-tests → gf-ship`
+- **`/flow-1-gt-us-to-spec`** *(deprecated)* — full end-to-end flow; prefer the sub-orchestrators above.
 
 **Pipeline B — Test Failure Triage** (invoked with `/flow-2-ft-failed-test-analysis`):
 ```
 ft-repro → ft-classifier → [ft-test-fix-runner | ft-bug-reporter]
 ```
 
-**Both orchestrators are fully autonomous — they never re-ask the user mid-run.** Missing inputs or env vars cause an immediate stop-and-report, not a prompt.
+**All orchestrators are fully autonomous — they never re-ask the user mid-run.** Missing inputs or env vars cause an immediate stop-and-report, not a prompt.
 
 ### Invocation
 
 ```bash
-# Pipeline A — from tracker story
-/flow-1-gt-us-to-spec --us-id 112
+# Pipeline A-1: story → test cases (upload + link to tracker)
+/flow-1a-gt-us-to-tc --us-id 112
 
-# Pipeline A — from pasted story text
-/flow-1-gt-us-to-spec --us-text "As a user I want to log in..."
+# Pipeline A-2: test cases → Playwright specs + PR
+/flow-1b-gt-tc-to-spec --run-id gtc-20240601-143012
+
+# Pipeline A-2 (fetch TCs directly from tracker)
+/flow-1b-gt-tc-to-spec --us-id 112
+
+# Pipeline A full (deprecated — prefer sub-orchestrators above)
+/flow-1-gt-us-to-spec --us-id 112
 
 # Pipeline B
 /flow-2-ft-failed-test-analysis tests/checkout/critical-checkout-validation-fail.spec.ts
