@@ -66,6 +66,42 @@ Invoke `gt-story-planner` with the user story input.
 
 Show checkpoint: `✓ Scenarios planned: N scenarios (M skipped as already covered)`
 
+### Phase 1.5 — App exploration (`playwright-cli`)
+
+Use `playwright-cli` to explore the feature area described in `us.json`:
+
+1. Navigate to the relevant pages and flows.
+2. Take snapshots of key states (forms, error messages, modals, success states).
+3. Walk through each acceptance criterion from `us.json.ac` in the live app.
+4. Specifically look for defects: broken UI, missing elements, wrong copy, unexpected errors, incorrect navigation, or behavior that contradicts the acceptance criteria.
+
+Write `.workflow-artifacts/{run_id}/exploration.json`:
+
+```json
+{
+  "run_id": "<run_id>",
+  "us_id": "<us_id>",
+  "pages_visited": ["<page1>", "<page2>"],
+  "observations": ["<observation 1>", "..."],
+  "bugs": [
+    {
+      "title": "<short defect title>",
+      "description": "<what is wrong and what was expected>",
+      "steps_to_reproduce": ["Step 1", "Step 2", "..."],
+      "severity": "critical | high | medium | low",
+      "screenshot": ".workflow-artifacts/<run_id>/exploration-bug-<N>.png"
+    }
+  ]
+}
+```
+
+If no bugs are found, write `"bugs": []`.
+
+- **SUCCESS:** `exploration.json` written
+- **FAILED:** stop and report
+
+Show checkpoint: `✓ App explored: N pages visited, M potential bugs found`
+
 ### Phase 2 — Ideation (`gt-test-ideation`)
 
 Invoke `gt-test-ideation` with `us.json` and `scenarios.md`.
@@ -74,6 +110,52 @@ Invoke `gt-test-ideation` with `us.json` and `scenarios.md`.
 - **FAILED:** stop and report
 
 Show checkpoint: `✓ Test ideas generated: N ideation units`
+
+### Phase 2.5 — Bug reporting (`ft-bug-reporter`)
+
+Read `exploration.json`. If `bugs` is empty, skip this phase — log `No exploration bugs to report` and continue.
+
+For each bug in `exploration.json.bugs`:
+
+1. Synthesize `.workflow-artifacts/{run_id}/exploration-classification-{i}.json`:
+
+```json
+{
+  "verdict": "app-bug",
+  "confidence": "<severity-to-confidence: critical→0.90, high→0.80, medium→0.70, low→0.62>",
+  "signals": [{ "name": "observed defect during live app exploration", "weight": "<confidence>" }],
+  "error_summary": "<bug.title>",
+  "evidence_paths": ["<bug.screenshot>"],
+  "recommended_next_skill": "ft-bug-reporter"
+}
+```
+
+2. Synthesize `.workflow-artifacts/{run_id}/exploration-repro-{i}.json`:
+
+```json
+{
+  "run_id": "<run_id>",
+  "spec": "exploration",
+  "error": "<bug.description>",
+  "stack": "<bug.steps_to_reproduce joined with newlines>",
+  "locator": null,
+  "expected": "behavior matching acceptance criteria",
+  "actual": "<bug.description>",
+  "artifacts": {
+    "trace": null,
+    "screenshot": "<bug.screenshot>",
+    "video": null
+  }
+}
+```
+
+3. Invoke `ft-bug-reporter` with these two synthesized artifacts as inputs.
+
+- If an individual bug report fails: log the failure and continue to the next bug — do not abort.
+- **SUCCESS:** `bug-{i}.json` written for each filed bug
+- **SKIPPED:** `bugs` array was empty
+
+Show checkpoint: `✓ Bugs reported: N bugs filed, M failed`
 
 ## Phase compact protocol
 
@@ -104,7 +186,9 @@ JSON block and drop all full phase output from active context. This is mandatory
 | Phase | Retain |
 |---|---|
 | gt-story-planner (1) | `us_id`, `title`, `scenario_count` |
+| App exploration (1.5) | `pages_visited_count`, `bug_count` |
 | gt-test-ideation (2) | `total_ideas`, `scenario_count` |
+| Bug reporting (2.5) | `bugs_filed`, `bugs_failed` |
 | gt-test-case-generator (3a) | `tc_id`, `scenario_index`, `title`, `deduped` |
 | Link TCs to Story (4) | `linked_count`, `failed_count` |
 
@@ -181,7 +265,8 @@ Next: run flow-1b-gt-tc-to-spec --run-id gtc-20240601-143012 to generate Playwri
 - Do not ask the user to confirm any phase, scenario skip, or linking operation.
 - Do not add "shall I proceed?" or approval gates anywhere in the flow.
 - If a non-critical phase fails (any Phase 3a / Phase 4 iteration), log the failure and continue — do not abort the entire pipeline.
-- Phases 0, 1, 2, and 5 use `on_failure: stop` — a failure there aborts everything.
+- Phases 0, 1, 1.5, 2, and 5 use `on_failure: stop` — a failure there aborts everything.
+- Phases 2.5 and 4 are per-item loops: log individual failures and continue; do not abort the pipeline.
 
 **Artifact contracts:**
 - Generate a `run_id` at start with prefix `gtc` and use it consistently for all artifacts.

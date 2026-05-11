@@ -35,7 +35,7 @@ Skills source `.env` automatically via `_common.sh`. The fake tracker server mus
 
 **Pipeline A — User Story → Automated Spec** (two focused sub-orchestrators; full pipeline deprecated):
 
-- **`/flow-1a-gt-us-to-tc`** — Story → Test Cases: `gt-story-planner → gt-test-ideation → gt-test-case-generator → link TCs to story`
+- **`/flow-1a-gt-us-to-tc`** — Story → Test Cases: `gt-story-planner → playwright-cli exploration → [ft-bug-reporter if bugs found] → gt-test-ideation → gt-test-case-generator → link TCs to story`
 - **`/flow-1b-gt-tc-to-spec`** — Test Cases → Specs: `fetch TCs → gt-spec-writer → gt-refactor-tests → gf-ship`
 - **`/flow-1-gt-us-to-spec`** *(deprecated)* — full end-to-end flow; prefer the sub-orchestrators above.
 
@@ -80,6 +80,26 @@ Each stage reads the previous stage's artifact from `.workflow-artifacts/{run_id
 }
 ```
 When story text is pasted directly: `"id": "manual"`, `"url": null`.
+
+**`exploration.json`** — written by `flow-1a` Phase 1.5 (app exploration)
+```json
+{
+  "run_id": "gtc-20240601-143012",
+  "us_id": "112",
+  "pages_visited": ["login", "inventory"],
+  "observations": ["Login form has username and password fields", "..."],
+  "bugs": [
+    {
+      "title": "Submit button enabled with empty fields",
+      "description": "Button is clickable before any input is entered",
+      "steps_to_reproduce": ["Navigate to login page", "Leave both fields empty", "Observe Login button state"],
+      "severity": "medium",
+      "screenshot": ".workflow-artifacts/gtc-20240601-143012/exploration-bug-0.png"
+    }
+  ]
+}
+```
+`bugs` is `[]` when no defects are found. Non-empty `bugs` trigger Phase 2.5 (`ft-bug-reporter`). Only present in flow-1a runs — not produced by standalone `gt-story-planner`.
 
 **`scenarios.md`** — written by `gt-story-planner`
 ```markdown
@@ -229,11 +249,13 @@ Fields retained per phase (Pipeline A):
 
 | Phase | Fields retained |
 |---|---|
-| `gt-story-planner` | `us_id`, `title`, `scenario_count` |
-| `gt-test-ideation` | `total_ideas`, `scenario_count` |
-| `gt-test-case-generator` | `tc_id`, `scenario_index`, `title`, `deduped` |
-| `gt-spec-writer` | `status`, `spec_path`, `tc_id`, `last_error` |
-| `gt-refactor-tests` | `fixes_applied`, `spec_path` |
+| `gt-story-planner` (1) | `us_id`, `title`, `scenario_count` |
+| App exploration (1.5) | `pages_visited_count`, `bug_count` |
+| `gt-test-ideation` (2) | `total_ideas`, `scenario_count` |
+| Bug reporting (2.5) | `bugs_filed`, `bugs_failed` |
+| `gt-test-case-generator` (3) | `tc_id`, `scenario_index`, `title`, `deduped` |
+| `gt-spec-writer` (flow-1b) | `status`, `spec_path`, `tc_id`, `last_error` |
+| `gt-refactor-tests` (flow-1b) | `fixes_applied`, `spec_path` |
 
 Fields retained per phase (Pipeline B):
 
@@ -263,6 +285,7 @@ Additional reference skills in `.agents/skills/`: `playwright-best-practices`, `
 - Never modify app code in `ft-test-fix-runner`
 - `gt-test-case-generator`: verbatim copy of ideas/verifications; `ideas.length === verifications.length`
 - `gt-story-planner` and `ft-classifier`: mandatory live app exploration via `playwright-cli` before writing artifacts
+- `flow-1a` Phase 1.5: dedicated bug-hunting exploration via `playwright-cli`; writes `exploration.json`; non-empty `bugs[]` triggers Phase 2.5
 - Fake tracker returns `{"id":0,...}` on create — this is expected, not an error
 - All tracker and git operations go through wrapper skills/scripts only
 - Never prefix bash calls with `cd /path && source .env &&` — working directory and env are already set; doing so bypasses the permission allowlist
@@ -324,6 +347,9 @@ Tests target [SauceDemo](https://www.saucedemo.com/). Page Object Model lives in
 
 Artifact handoff chain:
 ```
-us.json → scenarios.md → test-ideas.json → tc-N.json → spec-N.json   (Pipeline A)
-repro.json → classification.json → fix.json | bug.json                (Pipeline B)
+us.json → exploration.json → scenarios.md → test-ideas.json → tc-N.json → spec-N.json   (Pipeline A)
+                   ↓
+              bug-{i}.json (optional — when Phase 1.5 exploration finds defects)
+
+repro.json → classification.json → fix.json | bug.json                                   (Pipeline B)
 ```

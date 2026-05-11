@@ -81,7 +81,7 @@ Pipeline A is split into two independent sub-orchestrators:
 
 | Sub-orchestrator | Invoke | What it does |
 |---|---|---|
-| `flow-1a-gt-us-to-tc` | `/flow-1a-gt-us-to-tc --us-id <id>` | Story → Test Cases: plan, ideate, generate TCs, link to tracker story |
+| `flow-1a-gt-us-to-tc` | `/flow-1a-gt-us-to-tc --us-id <id>` | Story → Test Cases: plan scenarios → explore live app (Phase 1.5) → file any bugs found (Phase 2.5) → ideate → generate TCs → link to story |
 | `flow-1b-gt-tc-to-spec` | `/flow-1b-gt-tc-to-spec --run-id <gtc-id>` | Test Cases → Specs: fetch TCs, write specs, refactor, ship PR |
 | `flow-1b-gt-tc-to-spec` | `/flow-1b-gt-tc-to-spec --us-id <id>` | Same as above but fetches TCs from tracker directly |
 
@@ -95,35 +95,42 @@ All Pipeline A orchestrators are fully autonomous — never pause for confirmati
  User Story (ID or text)
         │
         ▼
-┌─────────────────┐   us.json        ┌──────────────────┐   test-ideas.json   ┌──────────────────────┐
-│ gt-story-planner│ ──────────────►  │ gt-test-ideation │ ──────────────────► │ gt-test-case-generator│
-│                 │   scenarios.md   │                  │                     │                      │
-└─────────────────┘                  └──────────────────┘                     └──────────┬───────────┘
-                                                                                          │ tc-N.json
-                                                                                          ▼
-                                                                               ┌──────────────────┐
-                                                                               │  gt-spec-writer  │
-                                                                               └────────┬─────────┘
-                                                                                        │
-                                                              ┌─────── spec passing ────┤
-                                                              │                         │
-                                                              │                spec failing
-                                                              ▼                         ▼
-                                                   ┌──────────────────┐    ┌────────────────────┐
-                                                   │ gt-refactor-tests│    │  ft-bug-reporter   │
-                                                   └────────┬─────────┘    └────────────────────┘
-                                                            │ cleaned spec
-                                                            ▼
-                                                   ┌────────────────┐
-                                                   │    gf-ship     │──► PR on GitHub
-                                                   └────────────────┘
+┌─────────────────┐   us.json + scenarios.md   ┌──────────────────────┐   exploration.json
+│ gt-story-planner│ ─────────────────────────► │  Phase 1.5           │ ──────────────────────────────┐
+│  (Phase 1)      │                            │  playwright-cli       │                               │
+└─────────────────┘                            │  app exploration      │         bugs found?           │
+                                               └──────────────────────┘              │                 │
+                                                                               yes ──┤    no           │
+                                                                                     ▼                 │
+                                                                        ┌────────────────────┐         │
+                                                                        │  Phase 2.5         │         │
+                                                                        │  ft-bug-reporter   │         │
+                                                                        │  (per bug found)   │         │
+                                                                        └──────────┬─────────┘         │
+                                                                                   │ bug-{i}.json       │
+                                                                                   │ → tracker          │
+                                                                                   └───────────────┐   │
+                                                                                                   ▼   ▼
+┌──────────────────┐   test-ideas.json   ┌──────────────────────┐   tc-N.json
+│ gt-test-ideation │ ──────────────────► │ gt-test-case-generator│ ──────────► [flow-1b-gt-tc-to-spec]
+│  (Phase 2)       │                     │  (Phase 3)            │
+└──────────────────┘                     └──────────────────────┘
+
+── flow-1b-gt-tc-to-spec ─────────────────────────────────────────────────────────────────────────
+
+tc-N.json ──► gt-spec-writer ──► spec-N.json
+                                      │
+                     ┌─── passing ────┤
+                     │                └─── failing ──► ft-bug-reporter ──► bug.json → tracker
+                     ▼
+             gt-refactor-tests ──► cleaned .spec.ts ──► gf-ship ──► PR on GitHub
 ```
 
 ### Stage-by-stage reference
 
-#### 1. `gt-story-planner`
+#### 1. `gt-story-planner` (flow-1a Phase 1)
 
-Fetches or synthesizes the user story, explores the live app with `playwright-cli`, checks for already-covered scenarios, and designs a scenario list with exploratory charters.
+Fetches or synthesizes the user story, explores the live app with `playwright-cli` for scenario design, checks for already-covered scenarios, and produces a scenario list with exploratory charters.
 
 ```
  --us-id <id>  ──► tracker fetch ──► us.json ──┐
@@ -172,7 +179,62 @@ Fetches or synthesizes the user story, explores the live app with `playwright-cl
 
 ---
 
-#### 2. `gt-test-ideation`
+#### 1.5. App exploration — flow-1a Phase 1.5 (`playwright-cli`)
+
+Runs after `gt-story-planner` completes. Navigates the feature area, walks each acceptance criterion against the live app, and specifically looks for defects: broken UI, missing elements, wrong copy, unexpected errors, or behavior contradicting the ACs. Produces a structured `exploration.json` with a `bugs[]` array. Hard stop on failure.
+
+```
+ us.json.ac ──► playwright-cli navigate + snapshot ──► observations
+                                                              │
+                                          ┌──── no bugs ─────┤
+                                          │                  └──── bugs found ──► bugs[] in exploration.json
+                                          ▼
+                                  exploration.json { bugs: [] }
+```
+
+**Artifact out:**
+
+`exploration.json`
+```json
+{
+  "run_id": "gtc-20240601-143012",
+  "us_id": "112",
+  "pages_visited": ["login", "inventory"],
+  "observations": ["Login form renders correctly", "..."],
+  "bugs": []
+}
+```
+
+---
+
+#### 2.5. Bug reporting — flow-1a Phase 2.5 (`ft-bug-reporter`)
+
+Runs after `gt-test-ideation`. Reads `exploration.json.bugs`; skips silently if empty. For each bug, synthesizes a `classification.json`-compatible artifact (severity → confidence: critical→0.90, high→0.80, medium→0.70, low→0.62) and a `repro.json`-compatible artifact, then invokes `ft-bug-reporter`. Per-bug failures are logged and skipped — the pipeline continues to TC generation regardless.
+
+```
+ exploration.json.bugs[]
+        │
+        ├── empty ──► skip (log "No exploration bugs to report")
+        │
+        └── non-empty ──► [for each bug]
+                              │
+                              ├──► synthesize exploration-classification-{i}.json
+                              ├──► synthesize exploration-repro-{i}.json
+                              └──► ft-bug-reporter ──► bug-{i}.json + tracker issue
+```
+
+**Severity → confidence mapping:**
+
+| Severity | Confidence | Tracker severity |
+|---|---|---|
+| `critical` | 0.90 | critical |
+| `high` | 0.80 | high |
+| `medium` | 0.70 | medium |
+| `low` | 0.62 | low |
+
+---
+
+#### 2. `gt-test-ideation` (flow-1a Phase 2)
 
 Expands each scenario into a structured ideation unit with conditions, ordered steps, verifications, navigations, and page object helper references. Enforces `ideas.length === verifications.length`.
 
@@ -352,7 +414,9 @@ Creates a branch, commits all passing spec files, pushes, and opens a PR to `COR
 
 ```
 ✓ Scenarios planned: 5 scenarios (1 skipped as already covered)
+✓ App explored: 3 pages visited, 0 potential bugs found
 ✓ Test ideas generated: 5 ideation units
+✓ Bugs reported: skipped (no exploration bugs found)
 ✓ Test cases generated: 5 / 5 scenarios
 
 | # | Scenario                                    | TC ID        | Spec Path                                    | Status  | Notes        |
@@ -729,32 +793,44 @@ All orchestrators (`/flow-1a-gt-us-to-tc`, `/flow-1b-gt-tc-to-spec`, `/flow-1-gt
 ### Pipeline A handoff chain
 
 ```
-gt-story-planner
-  └──► us.json ──────────────────────────────────────────────────────────────────┐
-  └──► scenarios.md ──────────────────────────────────────────────────────────┐  │
-                                                                              │  │
-gt-test-ideation (reads us.json + scenarios.md)                              │  │
-  └──► test-ideas.json ────────────────────────────────────────────────────┐ │  │
-  └──► test-ideas.md (human review)                                        │ │  │
-                                                                           │ │  │
-gt-test-case-generator (reads test-ideas.json[N])                          │ │  │
-  └──► tc-N.json ──────────────────────────────────────────────────────┐  │ │  │
-  └──► tc-steps-N.md / tc-steps-N.xml (human review)                  │  │ │  │
-                                                                       │  │ │  │
-gt-spec-writer (reads tc-N.json)                                       │  │ │  │
-  └──► tests/<domain>/<name>.spec.ts ──────────────────────────────┐  │  │ │  │
-  └──► spec-N.json { status: passing|failing }                     │  │  │ │  │
-                                                                   │  │  │ │  │
-gt-refactor-tests (reads spec file)                                │  │  │ │  │
-  └──► cleaned .spec.ts ───────────────────────────────────────────┘  │  │ │  │
-                                                                       │  │ │  │
-gf-ship (reads all passing spec paths + us.json.id)                   │  │ │  │
-  └──► git branch / commit / push / PR on GitHub                       │  │ │  │
-                                                                       │  │ │  │
-ft-bug-reporter (reads spec-N.json failing + tc-N.json) ───────────────┘  │ │  │
-  └──► bug.json + tracker issue                                            │ │  │
-                                                                           │ │  │
-All downstream skills read from .workflow-artifacts/{run_id}/ ─────────────┘─┘──┘
+── flow-1a-gt-us-to-tc ────────────────────────────────────────────────────────────────────────────
+
+gt-story-planner (Phase 1)
+  └──► us.json
+  └──► scenarios.md
+
+Phase 1.5 — app exploration (reads us.json)
+  └──► exploration.json { pages_visited[], observations[], bugs[] }
+
+Phase 2.5 — bug reporting (reads exploration.json; skips if bugs is empty)
+  └──► exploration-classification-{i}.json  (synthesized, per bug)
+  └──► exploration-repro-{i}.json           (synthesized, per bug)
+  └──► ft-bug-reporter ──► bug-{i}.json + tracker issue
+
+gt-test-ideation (Phase 2, reads us.json + scenarios.md)
+  └──► test-ideas.json
+  └──► test-ideas.md (human review)
+
+gt-test-case-generator (Phase 3, reads test-ideas.json[N])
+  └──► tc-N.json
+  └──► tc-steps-N.md / tc-steps-N.xml (human review)
+
+── flow-1b-gt-tc-to-spec ──────────────────────────────────────────────────────────────────────────
+
+gt-spec-writer (reads tc-N.json)
+  └──► tests/<domain>/<name>.spec.ts
+  └──► spec-N.json { status: passing|failing }
+
+gt-refactor-tests (reads spec file)
+  └──► cleaned .spec.ts
+
+gf-ship (reads all passing spec paths + us.json.id)
+  └──► git branch / commit / push / PR on GitHub
+
+ft-bug-reporter (reads spec-N.json failing + tc-N.json)
+  └──► bug.json + tracker issue
+
+All artifacts stored in .workflow-artifacts/{run_id}/
 ```
 
 ### Pipeline B handoff chain
@@ -785,8 +861,11 @@ All artifacts stored in .workflow-artifacts/{run_id}/ ────────�
 
 | File | Written by | Read by |
 |---|---|---|
-| `us.json` | `gt-story-planner` | `gt-test-ideation` |
+| `us.json` | `gt-story-planner` | Phase 1.5, `gt-test-ideation` |
 | `scenarios.md` | `gt-story-planner` | `gt-test-ideation` |
+| `exploration.json` | flow-1a Phase 1.5 | flow-1a Phase 2.5 |
+| `exploration-classification-{i}.json` | flow-1a Phase 2.5 | `ft-bug-reporter` |
+| `exploration-repro-{i}.json` | flow-1a Phase 2.5 | `ft-bug-reporter` |
 | `test-ideas.json` | `gt-test-ideation` | `gt-test-case-generator` |
 | `test-ideas.md` | `gt-test-ideation` | — (human review) |
 | `tc-N.json` | `gt-test-case-generator` | `gt-spec-writer` |
