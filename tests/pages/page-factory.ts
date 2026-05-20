@@ -3,6 +3,7 @@ import { CartPage } from "./cart.page";
 import { CheckoutPage } from "./checkout.page";
 import { InventoryPage } from "./inventory.page";
 import { LoginPage } from "./login.page";
+import { ProductDetailPage } from "./product-detail.page";
 
 export class PageFactory {
   readonly page: Page;
@@ -10,6 +11,7 @@ export class PageFactory {
   readonly inventory: InventoryPage;
   readonly cart: CartPage;
   readonly checkout: CheckoutPage;
+  readonly productDetail: ProductDetailPage;
 
   constructor(page: Page) {
     this.page = page;
@@ -17,5 +19,6 @@ export class PageFactory {
     this.inventory = new InventoryPage(page);
     this.cart = new CartPage(page);
     this.checkout = new CheckoutPage(page);
+    this.productDetail = new ProductDetailPage(page);
   }
 }

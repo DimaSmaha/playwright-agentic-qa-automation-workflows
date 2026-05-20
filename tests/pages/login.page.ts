@@ -13,4 +13,10 @@ export class LoginPage {
     await this.page.getByRole("button", { name: "Login" }).click();
     await expect(this.page).toHaveURL(/.*inventory.html/);
   }
+
+  async assertAtLoginPage() {
+    await expect(this.page).toHaveURL("https://www.saucedemo.com/");
+    await expect(this.page.getByPlaceholder("Username")).toBeVisible();
+    await expect(this.page.getByPlaceholder("Password")).toBeVisible();
+  }
 }
